@@ -1,0 +1,257 @@
+@custom-variant dark (&:is(.dark *));
+
+/* Brand palette — the SINGLE source of truth, shared with the dashboard.
+   Do not redefine a brand colour below; change it in packages/shared. */
+@import "@collection/shared/styles/tokens.css";
+
+:root {
+  --font-size: 16px;
+
+  /* ---- SURFACE POLARITY: the website is fully DARK -------------------------
+   * These are ROLE tokens. The brand tokens above say what a colour IS; these
+   * say what it is FOR. They exist because the old names could not survive the
+   * inversion: `--noir` was simultaneously a dark background (12 uses), the
+   * primary text (14 uses) and a button border (5 uses) — on a dark ground the
+   * first two must be OPPOSITE colours, so one value cannot serve both.
+   * Components address these, never a raw brand token. */
+  --surface-page: var(--noir);        /* #0A0A0A — the ground */
+  --surface-raised: var(--graphite);  /* #141414 — cards, bands, placeholders */
+  --surface-deep: var(--onyx);        /* #050505 — lightbox, scrims */
+
+  --text-primary: var(--alabaster);   /* #F4F2ED — headings   17.7:1 */
+  --text-body: var(--fog);            /* #A7A29B — body        7.8:1 */
+  --text-muted: var(--platinum-dim);  /* #8B8D90 — eyebrow    5.95:1 */
+
+  /* The accent is SILVER. On this dark ground it is platinum (13.9:1); the
+     dashboard's light surfaces use steel instead. */
+  --accent: var(--platinum);          /* #D6D8DB */
+  --accent-soft: var(--platinum-dim); /* #8B8D90 — quiet labels, dimmer silver */
+  --on-accent: var(--noir);           /* text on a silver/metal fill */
+
+  /* ---- signals, tuned against the CARD (#141414), the harder dark ground --- */
+  --signal-good: #598960;   /* 4.54:1 on card  (was #4F7A55 = 4.00 FAIL on dark) */
+  --signal-red: #C65E52;    /* 4.50:1 on card  (was #B4483B = 2.89 FAIL on dark) */
+  --signal-amber: #C0741F;  /* 5.05:1 on card */
+  --signal-calm: var(--platinum-dim);
+
+  /* Semantic (shadcn) layer — dark polarity. */
+  --background: var(--surface-page);
+  --foreground: var(--text-primary);
+  --card: var(--surface-raised);
+  --card-foreground: var(--text-primary);
+  --popover: var(--surface-raised);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--text-primary);
+  --primary-foreground: var(--surface-page);
+  --secondary: var(--surface-raised);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--surface-raised);
+  --muted-foreground: var(--text-muted);
+  --accent-foreground: var(--on-accent);
+  --destructive: var(--signal-red);
+  --destructive-foreground: var(--surface-page);
+
+  /* Hairline on dark: dim platinum at 15%, exactly as the reference does it. */
+  --border: color-mix(in srgb, var(--platinum-dim) 15%, transparent);
+  --input: color-mix(in srgb, var(--platinum-dim) 20%, transparent);
+  --input-background: var(--surface-raised);
+  --switch-background: var(--platinum-dim);
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: var(--accent);
+
+  --chart-1: var(--platinum);
+  --chart-2: var(--platinum-dim);
+  --chart-3: var(--fog);
+  --chart-4: var(--signal-amber);
+  --chart-5: var(--signal-good);
+
+  --radius: 0.625rem;
+
+  --sidebar: var(--surface-raised);
+  --sidebar-foreground: var(--text-primary);
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: var(--on-accent);
+  --sidebar-accent: var(--surface-raised);
+  --sidebar-accent-foreground: var(--text-primary);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--accent);
+}
+
+@theme inline {
+  /* Role tokens as utilities, so a frosted/translucent SURFACE can be written as
+     bg-surface-page/86 instead of a light brand token that would stay light. */
+  --color-surface-page: var(--surface-page);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-deep: var(--surface-deep);
+  --color-text-primary: var(--text-primary);
+  --color-text-body: var(--text-body);
+  --color-text-muted: var(--text-muted);
+
+  --color-noir: var(--noir);
+  --color-graphite: var(--graphite);
+  --color-alabaster: var(--alabaster);
+  --color-cream: var(--cream);
+  --color-fog: var(--fog);
+  --color-platinum: var(--platinum);
+  --color-platinum-dim: var(--platinum-dim);
+  --color-steel: var(--steel);
+  --color-onyx: var(--onyx);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-signal-amber: var(--signal-amber);
+  --color-signal-red: var(--signal-red);
+  --color-signal-calm: var(--signal-calm);
+  --color-signal-good: var(--signal-good);
+  --color-ch-instagram: var(--ch-instagram);
+  --color-ch-whatsapp: var(--ch-whatsapp);
+  --color-ch-messenger: var(--ch-messenger);
+
+  /* Tailwind's own defaults, retargeted onto brand tokens. */
+  --color-white: var(--white);
+  --color-black: var(--black);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --font-sans: var(--typeface-sans);
+  --font-serif: var(--typeface-serif);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--typeface-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Headings take their colour from --foreground (light on this dark ground) —
+     never a hardcoded near-black. */
+  h1, h2, h3, h4 {
+    font-family: var(--typeface-serif);
+    font-optical-sizing: auto;
+    letter-spacing: -0.01em;
+    color: var(--foreground);
+  }
+
+  html { font-size: var(--font-size); }
+
+  h1 { font-size: var(--text-2xl); font-weight: var(--font-weight-medium); line-height: 1.5; }
+  h2 { font-size: var(--text-xl);  font-weight: var(--font-weight-medium); line-height: 1.5; }
+  h3 { font-size: var(--text-lg);  font-weight: var(--font-weight-medium); line-height: 1.5; }
+  h4 { font-size: var(--text-base);font-weight: var(--font-weight-medium); line-height: 1.5; }
+  label  { font-size: var(--text-base); font-weight: var(--font-weight-medium); line-height: 1.5; }
+  button { font-size: var(--text-base); font-weight: var(--font-weight-medium); line-height: 1.5; }
+  input  { font-size: var(--text-base); font-weight: var(--font-weight-normal); line-height: 1.5; }
+}
+
+/* ===========================================================================
+ * THE METALLIC ACCENT — website only.
+ * The accent is a gradient, not a hex, so it cannot be delivered by a token
+ * value. Three utilities, used exactly as the reference uses them.
+ * =========================================================================== */
+@layer components {
+  /* 1. CTA fill. Dark text on brushed silver. */
+  .metal-fill {
+    background: var(--metal);
+    color: var(--on-accent);
+    border: 0;
+  }
+
+  /* 2. Gradient clipped into text — prices, stats.
+     Takes --metal-TEXT, not --metal. Clipped into glyphs, --metal's darkest stop is
+     4.10:1 on noir: AA-large only, as its comment always said — but the car card
+     renders its price at 16px, so every card price on the site (landing AND
+     /collection) sat at 4.10–4.34:1 against a 4.5 requirement. --metal-text is the
+     same silver, re-cut so the darkest stop clears AA as SMALL text (7.99:1). The
+     "large numerals only" caveat is therefore retired: this one is safe anywhere. */
+  .text-metal {
+    background: var(--metal-text);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 3. The hairline: fades in from transparent, peaks mid-run, fades out.
+     Replaces the old gold rule. */
+  .hairline {
+    height: 1px;
+    width: 100%;
+    background: var(--metal-line);
+    border: 0;
+  }
+
+  /* Film grain. A large flat black reads as a dead fill; a little tooth makes it
+     read as an exposure. One tiled SVG turbulence — no asset to ship, and no
+     runtime filter to run. It is a ::before, so it paints BEFORE the section's
+     positioned children and can never sit on top of the text (and so cannot cost
+     a single point of contrast). Decorative: put it only on a dark surface. */
+  .film-grain { position: relative; }
+  .film-grain::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.055;
+    background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxNjAnIGhlaWdodD0nMTYwJz48ZmlsdGVyIGlkPSduJz48ZmVUdXJidWxlbmNlIHR5cGU9J2ZyYWN0YWxOb2lzZScgYmFzZUZyZXF1ZW5jeT0nMC44MicgbnVtT2N0YXZlcz0nMicgc3RpdGNoVGlsZXM9J3N0aXRjaCcvPjxmZUNvbG9yTWF0cml4IHR5cGU9J3NhdHVyYXRlJyB2YWx1ZXM9JzAnLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0nMTYwJyBoZWlnaHQ9JzE2MCcgZmlsdGVyPSd1cmwoI24pJy8+PC9zdmc+");
+    background-size: 160px 160px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .film-grain::before { opacity: 0.035; }
+  }
+
+  /* Hover sheen — a light band sweeping across a metal/dark surface. */
+  .sheen { position: relative; overflow: hidden; }
+  .sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(115deg, transparent 0%, transparent 35%, var(--sheen) 50%, transparent 65%, transparent 100%);
+    transform: translateX(-120%);
+  }
+  .sheen:hover::after { transform: translateX(120%); transition: transform 0.9s ease; }
+  @media (prefers-reduced-motion: reduce) {
+    .sheen::after { display: none; }
+  }
+}

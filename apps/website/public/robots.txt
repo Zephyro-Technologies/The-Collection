@@ -1,0 +1,5 @@
+# The Collection — public marketing site. Indexing is welcome.
+User-agent: *
+Allow: /
+
+Sitemap: https://thecollectionisb.com.pk/sitemap.xml

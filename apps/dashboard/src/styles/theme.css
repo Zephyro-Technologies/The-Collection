@@ -1,0 +1,235 @@
+@custom-variant dark (&:is(.dark *));
+
+/* Brand palette — the SINGLE source of truth, shared with the website.
+   Do not redefine a brand colour below; change it in packages/shared. */
+@import "@collection/shared/styles/tokens.css";
+
+:root {
+  --font-size: 15px;
+
+  /* ---- surface polarity: the dashboard keeps LIGHT work surfaces -----------
+   * It is an operator tool used all day, so it does not invert to dark. It
+   * takes the same neutrals, the same silver family and no gold. */
+
+  /* Dark chrome (sidebar, primary buttons) — the only dark surfaces here. */
+  --noir-elevated: #141414;  /* raised dark surface */
+  --noir-700: #1C1C1C;       /* primary button hover */
+  --noir-600: #2C2C2C;       /* lighter charcoal */
+
+  /* ---- the accent -------------------------------------------------------
+   * The accent is SILVER. On the dashboard's LIGHT work surfaces it is STEEL —
+   * platinum measures 1.43:1 on a white card and would be invisible. */
+  --accent: var(--steel);           /* #6F7276 — 4.83:1 AA on white */
+  --accent-soft: #A8ABAF;           /* light steel — soft fills/tints */
+
+  /* The dashboard has a little DARK chrome (sidebar, bottom nav, avatar menu,
+     sign-in). Steel is only 4.10:1 on noir — fine for a 2px indicator bar, but it
+     FAILS AA as text. On dark, the accent is platinum, exactly as on the website. */
+  --accent-on-dark: var(--platinum); /* #D6D8DB — 13.9:1 on noir */
+
+  /* ---- signals, tuned against the WHITE CARD (the ground they sit on) ----
+   * amber was #C0741F = 3.65:1 on white — a live AA failure. Darkened. */
+  --signal-amber: #AA671B;   /* 4.50:1 on white  (was 3.65 — FAIL) */
+  --signal-red: #B4483B;     /* 5.34:1 on white */
+  --signal-good: #4F7A55;    /* 4.94:1 on white */
+  --signal-calm: #8A8A8A;    /* neutral, was warm #928B7D */
+
+  /* Semantic (shadcn) layer — every one maps onto a brand token. */
+  --background: var(--alabaster);   /* #F4F2ED page */
+  --foreground: var(--noir);        /* #0A0A0A ink — 19.8:1 on white */
+  --card: var(--white);
+  --card-foreground: var(--noir);
+  --popover: var(--white);
+  --popover-foreground: var(--noir);
+  --primary: var(--noir);
+  --primary-foreground: var(--cream);
+  --secondary: var(--platinum-soft);
+  --secondary-foreground: var(--noir);
+  --muted: var(--platinum-soft);
+  --muted-foreground: var(--ink-40);
+  /* --accent is defined in the accent block above (steel). */
+  --accent-foreground: var(--noir);
+  --destructive: var(--signal-red);
+  --destructive-foreground: var(--cream);
+  --border: color-mix(in srgb, var(--noir) 10%, transparent);
+  --card-border: color-mix(in srgb, var(--noir) 14%, transparent);
+  --shadow-card: 0 1px 2px 0 color-mix(in srgb, var(--noir) 5%, transparent);
+  --input: color-mix(in srgb, var(--noir) 12%, transparent);
+  --input-background: #FAFAF9;
+  --switch-background: #D6D6D4;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: var(--accent);
+
+  --chart-1: var(--noir);
+  --chart-2: var(--steel);
+  --chart-3: var(--platinum-dim);
+  --chart-4: var(--signal-amber);
+  --chart-5: var(--signal-calm);
+
+  --radius: 0.5rem;
+
+  --sidebar: var(--noir);
+  --sidebar-foreground: color-mix(in srgb, var(--cream) 80%, transparent);
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: var(--noir);
+  --sidebar-accent: color-mix(in srgb, var(--white) 6%, transparent);
+  --sidebar-accent-foreground: var(--cream);
+  --sidebar-border: color-mix(in srgb, var(--white) 8%, transparent);
+  --sidebar-ring: var(--accent);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Tailwind's own default palette, retargeted onto brand tokens. */
+  --color-white: var(--white);
+  --color-black: var(--black);
+
+  --color-noir: var(--noir);
+  --color-noir-elevated: var(--noir-elevated);
+  --color-noir-700: var(--noir-700);
+  --color-noir-600: var(--noir-600);
+  --color-card-border: var(--card-border);
+  --color-alabaster: var(--alabaster);
+  --color-cream: var(--cream);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-on-dark: var(--accent-on-dark);
+  --color-steel: var(--steel);
+  --color-platinum: var(--platinum);
+  --color-platinum-dim: var(--platinum-dim);
+  --color-platinum-soft: var(--platinum-soft);
+  --color-onyx: var(--onyx);
+  --color-ink-60: var(--ink-60);
+  --color-ink-40: var(--ink-40);
+  --color-signal-amber: var(--signal-amber);
+  --color-signal-red: var(--signal-red);
+  --color-signal-calm: var(--signal-calm);
+  --color-signal-good: var(--signal-good);
+  --color-ch-instagram: var(--ch-instagram);
+  --color-ch-whatsapp: var(--ch-whatsapp);
+  --color-ch-messenger: var(--ch-messenger);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --font-sans: var(--typeface-sans);
+  --font-serif: var(--typeface-serif);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--typeface-sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  /* Fraunces display serif — headings + hero numbers. Colour comes from
+     --foreground (NOT a hardcoded --noir), so a heading placed on a dark
+     surface can never render near-black on near-black. */
+  h1, h2, h3, h4 {
+    font-family: var(--typeface-serif);
+    font-optical-sizing: auto;
+    color: var(--foreground);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+  h1 { font-size: 2.05rem; line-height: 1.1; }
+  h2 { font-size: 1.5rem; line-height: 1.18; }
+  h3 { font-size: 1.1rem; line-height: 1.3; letter-spacing: -0.01em; }
+  h4 { font-size: 1rem; line-height: 1.4; letter-spacing: -0.01em; }
+
+  label, button {
+    font-family: var(--typeface-sans);
+    font-weight: 500;
+  }
+
+  input, textarea {
+    font-family: var(--typeface-sans);
+    font-weight: 400;
+  }
+
+  .eyebrow {
+    font-family: var(--typeface-sans);
+    font-weight: 500;
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-40);
+  }
+
+  .editorial {
+    font-family: var(--typeface-serif);
+    font-optical-sizing: auto;
+    letter-spacing: -0.01em;
+    color: var(--foreground);
+  }
+
+  .editorial-italic {
+    font-family: var(--typeface-serif);
+    font-style: italic;
+    color: var(--foreground);
+  }
+
+  .script { font-family: var(--typeface-script); }
+
+  .mark {
+    font-family: var(--typeface-mark);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+  }
+
+  /* The short accent rule. Flat steel here; the website has a metal-gradient
+     version of the same idea (.hairline). */
+  .accent-rule {
+    height: 1px;
+    background: var(--accent);
+    width: 32px;
+  }
+}

@@ -1,0 +1,20 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+# Trusted native build tools allowed to run install scripts (esbuild = Vite's
+# bundler, @tailwindcss/oxide = Tailwind v4's engine). pnpm 10+ blocks build
+# scripts by default; npm (used historically) ran these automatically.
+allowBuilds:
+  '@tailwindcss/oxide': true
+  esbuild: true
+supportedArchitectures:
+  os:
+    - linux
+  cpu:
+    - x64
+    - arm64
+  libc:
+    - glibc
+# Refuse packages published < 7 days ago (supply-chain safety). Hoisted from the
+# website export's own workspace config so it applies across the monorepo.
+minimumReleaseAge: 10080

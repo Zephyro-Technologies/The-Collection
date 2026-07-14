@@ -1,0 +1,84 @@
+/* THE COLLECTION — brand tokens. SINGLE SOURCE OF TRUTH.
+ * ---------------------------------------------------------------------------
+ * Both apps import this file; NEITHER redefines a brand colour value here.
+ *
+ * The palette is MONOCHROME + SILVER. There is no gold. The accent token is
+ * named --accent and resolves per-app: steel on the dashboard's light work
+ * surfaces, platinum on the website's dark ones (see each app's theme.css).
+ *
+ * Blacks are NEUTRAL (r=g=b). Text is WARM (an oat off-white). The accent is
+ * COOL brushed silver. That deliberate split is the whole character of the
+ * palette — don't "tidy" it into one temperature.
+ *
+ * WHY TWO SILVERS: platinum #D6D8DB is the accent on a dark ground (13.9:1) but
+ * scores 1.43:1 on a white card — invisible. Light surfaces therefore use steel
+ * #6F7276 (4.83:1 AA), which is the dark stop of the metal gradient. Never put
+ * platinum on a light surface.
+ *
+ * Surface polarity (page/card/text) and the signal colours differ per app and
+ * are set in each app's own theme.css — a signal tuned for a white card fails on
+ * a black one and vice versa.
+ */
+
+:root {
+  /* ---- neutrals: the blacks (neutral, r=g=b) ----------------------------- */
+  --noir: #0A0A0A;          /* deepest ground — website page, dashboard ink/sidebar */
+  --graphite: #141414;      /* raised dark surface — card on dark */
+  --charcoal: #1C1C1C;      /* one step further up from graphite */
+  --onyx: #050505;          /* below the page — scrims, lightbox */
+  --black: #000000;         /* true black — overlays only */
+
+  /* ---- neutrals: the whites (warm) --------------------------------------- */
+  --white: #FFFFFF;         /* dashboard card */
+  --alabaster: #F4F2ED;     /* dashboard page bg · website heading text */
+  --cream: #F4F2ED;         /* text on dark surfaces (both apps) */
+  --fog: #A7A29B;           /* body text on dark */
+  --platinum-soft: #EDECEA; /* muted surface on LIGHT (dashboard chips/placeholders) */
+
+  /* ---- the silvers (cool) ------------------------------------------------ */
+  --platinum: #D6D8DB;      /* accent on DARK only — 1.43:1 on white, never use there */
+  --platinum-dim: #8B8D90;  /* muted text + hairlines on dark */
+  --steel: #6F7276;         /* accent on LIGHT — 4.83:1 AA on white */
+
+  /* ---- inks (text on light) ---------------------------------------------- */
+  --ink-60: #545454;        /* body */
+  --ink-40: #6B6B6B;        /* muted */
+
+  /* ---- the metallic accent ----------------------------------------------
+   * The accent is a GRADIENT, not a hex. WEBSITE ONLY: it fills CTAs and is
+   * clipped into LARGE display numerals (prices, stats) — never body copy, as
+   * its dark stop is only AA-large. The dashboard uses flat --steel instead. */
+  --metal: linear-gradient(135deg, #6F7276 0%, #E9EBEE 25%, #9A9DA1 50%, #F4F5F6 75%, #7C7F83 100%);
+
+  /* The same brushed silver, re-cut for text CLIPPED INTO GLYPHS on a dark ground.
+     --metal above is a FILL: its dark stops exist to carry dark text sitting ON
+     them, so they are meant to be dark. Clipped into glyphs instead, its darkest
+     stop (#6F7276) is only 4.10:1 on noir — genuinely AA-LARGE, exactly as it was
+     documented, and fine for the detail page's 38px guide price. But the car CARD
+     renders its price at 16px, where AA wants 4.5:1, and it measured 4.10–4.34:1:
+     a small-text use of a large-text-only utility. Rather than leave a rule nobody
+     can honour at card size, here is a cut where EVERY stop clears AA as small
+     text: the darkest (#A8ABAF) is 7.99:1 on --graphite, 8.59:1 on --noir.
+     .text-metal takes this one; .metal-fill keeps --metal. */
+  --metal-text: linear-gradient(135deg, #A8ABAF 0%, #E9EBEE 25%, #C2C5C9 50%, #F4F5F6 75%, #B0B3B7 100%);
+
+  --metal-line: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--platinum) 60%, transparent) 50%, transparent 100%);
+  --sheen: color-mix(in srgb, #F4F5F6 28%, transparent);
+
+  /* ---- signals ----------------------------------------------------------
+   * Values live in each app's theme.css: they must be tuned against the surface
+   * they sit on. (The old amber failed AA on the dashboard's white cards.) */
+
+  /* ---- channel colours (stay platform-recognisable) ----------------------- */
+  --ch-instagram: #C13584;
+  --ch-whatsapp: #1FA85C;
+  --ch-messenger: #2F6FE5;
+
+  /* ---- typefaces ---------------------------------------------------------
+   * Named for what they ARE. (`--font-display` used to mean Inter in the
+   * dashboard and Fraunces on the website — one name, two typefaces.) */
+  --typeface-sans: "Inter Variable", "Inter", system-ui, sans-serif;
+  --typeface-serif: "Fraunces Variable", "Fraunces", Georgia, serif;
+  --typeface-script: "Pinyon Script", "Snell Roundhand", cursive;
+  --typeface-mark: "Oswald Variable", "Oswald", "Inter", sans-serif;
+}

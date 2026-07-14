@@ -1,0 +1,4 @@
+/* Fonts are self-hosted and bundled via @fontsource (imported in main.tsx):
+   Inter Variable (body/UI) and Fraunces Variable (display, incl. italic).
+   No runtime Google Fonts request. Pinyon Script / Oswald were only used by the
+   former text wordmark, which is now an image, so they are no longer loaded. */

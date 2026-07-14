@@ -1,0 +1,15 @@
+{
+  "name": "@collection/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./styles/tokens.css": "./styles/tokens.css"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.108.2"
+  }
+}

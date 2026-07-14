@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The Collection — Brand Guidelines</title>
+<style>
+  :root{
+    --noir:#0A0A0A; --graphite:#141414; --charcoal:#1C1C1C;
+    --white:#FFFFFF; --alabaster:#F4F2ED; --fog:#A7A29B; --platinum-soft:#EDECEA;
+    --platinum:#D6D8DB; --platinum-dim:#8B8D90; --steel:#6F7276;
+    --ink-60:#545454; --ink-40:#6B6B6B;
+    --metal:linear-gradient(135deg,#6F7276 0%,#E9EBEE 25%,#9A9DA1 50%,#F4F5F6 75%,#7C7F83 100%);
+    --metal-line:linear-gradient(90deg,transparent 0%,rgba(214,216,219,.6) 50%,transparent 100%);
+    --serif:"Fraunces","Iowan Old Style",Georgia,serif;
+    --sans:"Inter",-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,"SF Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--noir);color:var(--alabaster);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased}
+  .page{max-width:1000px;margin:0 auto;padding:64px 28px 110px;display:flex;flex-direction:column;gap:60px}
+  .eyebrow{font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--platinum-dim);font-weight:600}
+  h1{font-family:var(--serif);font-weight:400;font-size:clamp(2rem,4.4vw,2.9rem);margin:.5rem 0 0;letter-spacing:-.02em}
+  h2{font-family:var(--serif);font-weight:400;font-size:1.5rem;margin:0;letter-spacing:-.01em}
+  p{margin:0;color:var(--fog);max-width:66ch}
+  strong{color:var(--alabaster)}
+  .rule{height:1px;background:var(--metal-line);border:0}
+  section{display:flex;flex-direction:column;gap:18px}
+  .cover{display:flex;flex-direction:column;align-items:center;text-align:center;gap:18px;padding:30px 0 4px}
+  .cover img{width:min(360px,70vw);height:auto;display:block}
+  .cover .tag{font-family:var(--serif);font-style:italic;font-size:1.08rem;color:var(--platinum)}
+  .kicker{font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;font-weight:600;color:var(--platinum-dim)}
+  .sw{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:12px}
+  .s{border:1px solid rgba(139,141,144,.22);border-radius:6px;overflow:hidden;background:var(--graphite)}
+  .s .fill{height:68px}
+  .s .m{padding:9px 10px;font-size:.7rem;line-height:1.4;color:var(--fog)}
+  .s .m b{display:block;color:var(--alabaster);font-size:.76rem;font-weight:600}
+  .s .m .h{font-family:var(--mono);font-size:.68rem;color:var(--platinum-dim);display:block}
+  .light{background:var(--alabaster);border-radius:8px;padding:24px}
+  .light .s{background:var(--white);border-color:rgba(10,10,10,.14)}
+  .light .s .m{color:var(--ink-40)}
+  .light .s .m b{color:var(--noir)}
+  .light .s .m .h{color:var(--ink-40)}
+  .light h3{color:var(--noir);font-family:var(--serif);font-weight:400;margin:0 0 4px}
+  .light .sub{color:var(--ink-60);font-size:.86rem;margin-bottom:16px}
+  .spec{border-left:1px solid rgba(139,141,144,.25);padding-left:18px;display:flex;flex-direction:column;gap:6px}
+  .spec .big{font-family:var(--serif);font-size:2.2rem;line-height:1.1}
+  .btn{border:0;border-radius:999px;padding:12px 28px;background:var(--metal);color:var(--noir);font-weight:600;
+       font-size:.76rem;letter-spacing:.08em;text-transform:uppercase;font-family:var(--sans)}
+  .price{font-family:var(--serif);font-size:2.3rem;background:var(--metal);-webkit-background-clip:text;background-clip:text;
+         color:transparent;font-variant-numeric:tabular-nums}
+  table{border-collapse:collapse;width:100%;font-size:.84rem}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid rgba(139,141,144,.18)}
+  th{font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--platinum-dim)}
+  td.n{font-variant-numeric:tabular-nums;text-align:right}
+  .dot{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-2px;margin-right:8px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+  .do{border-left:2px solid var(--platinum);padding-left:14px}
+  .dont{border-left:2px solid #C65E52;padding-left:14px}
+  .do b,.dont b{display:block;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="cover">
+    <img src="the-collection-logo.svg" alt="The Collection" />
+    <div class="rule" style="width:120px"></div>
+    <div class="tag">Acquired, never simply bought.</div>
+    <div class="kicker">Brand guidelines</div>
+  </header>
+
+  <section>
+    <div class="eyebrow">01 — How we speak</div>
+    <h2>Quietly, and with certainty.</h2>
+    <p>The Collection speaks the way it sells: without noise, and without haste. We state what is true about a car
+      — its provenance, its condition, what has been verified — and then we stop. The strongest claim is the one
+      that does not strain to be heard. Privacy is the product. We never shout, never discount, never oversell.</p>
+  </section>
+
+  <hr class="rule" />
+
+  <section>
+    <div class="eyebrow">02 — Black, white &amp; silver</div>
+    <h2>Neutral blacks, warm whites, cool silver.</h2>
+    <p>The blacks are strictly neutral (r=g=b). The whites are warm. The accent is a cool brushed silver.
+      That split is the character of the identity — do not tidy it into a single temperature.
+      <strong>There is no gold in this brand.</strong></p>
+
+    <div class="eyebrow" style="margin-top:6px">Dark ground — the website</div>
+    <div class="sw">
+      <div class="s"><div class="fill" style="background:var(--noir)"></div><div class="m"><b>noir</b><span class="h">#0A0A0A</span>page ground</div></div>
+      <div class="s"><div class="fill" style="background:var(--graphite)"></div><div class="m"><b>graphite</b><span class="h">#141414</span>card / raised band</div></div>
+      <div class="s"><div class="fill" style="background:var(--charcoal)"></div><div class="m"><b>charcoal</b><span class="h">#1C1C1C</span>further step up</div></div>
+      <div class="s"><div class="fill" style="background:var(--alabaster)"></div><div class="m"><b>alabaster</b><span class="h">#F4F2ED</span>headings</div></div>
+      <div class="s"><div class="fill" style="background:var(--fog)"></div><div class="m"><b>fog</b><span class="h">#A7A29B</span>body copy</div></div>
+      <div class="s"><div class="fill" style="background:var(--platinum-dim)"></div><div class="m"><b>platinum-dim</b><span class="h">#8B8D90</span>eyebrow + hairlines</div></div>
+      <div class="s"><div class="fill" style="background:var(--platinum)"></div><div class="m"><b>platinum</b><span class="h">#D6D8DB</span>accent on dark</div></div>
+      <div class="s"><div class="fill" style="background:var(--metal)"></div><div class="m"><b>metal</b><span class="h">gradient</span>CTA + prices</div></div>
+    </div>
+
+    <div class="light" style="margin-top:18px">
+      <h3>Light ground — the dashboard</h3>
+      <div class="sub">The operator tool keeps light work surfaces. Same family, inverted polarity.</div>
+      <div class="sw">
+        <div class="s"><div class="fill" style="background:var(--alabaster)"></div><div class="m"><b>alabaster</b><span class="h">#F4F2ED</span>page ground</div></div>
+        <div class="s"><div class="fill" style="background:var(--white)"></div><div class="m"><b>white</b><span class="h">#FFFFFF</span>card</div></div>
+        <div class="s"><div class="fill" style="background:var(--noir)"></div><div class="m"><b>noir</b><span class="h">#0A0A0A</span>ink · sidebar</div></div>
+        <div class="s"><div class="fill" style="background:var(--ink-60)"></div><div class="m"><b>ink-60</b><span class="h">#545454</span>body copy</div></div>
+        <div class="s"><div class="fill" style="background:var(--ink-40)"></div><div class="m"><b>ink-40</b><span class="h">#6B6B6B</span>muted</div></div>
+        <div class="s"><div class="fill" style="background:var(--steel)"></div><div class="m"><b>steel</b><span class="h">#6F7276</span>accent on light</div></div>
+        <div class="s"><div class="fill" style="background:var(--platinum-soft)"></div><div class="m"><b>platinum-soft</b><span class="h">#EDECEA</span>muted surface</div></div>
+      </div>
+    </div>
+
+    <div class="grid2" style="margin-top:6px">
+      <div class="do"><b>Do</b><p>Use <span style="font-family:var(--mono)">platinum</span> as the accent on dark and
+        <span style="font-family:var(--mono)">steel</span> on light. They are one silver at two weights.</p></div>
+      <div class="dont"><b>Never</b><p>Never put <span style="font-family:var(--mono)">platinum #D6D8DB</span> on a white
+        surface — it measures <strong style="color:#C65E52">1.43:1</strong> and is effectively invisible.</p></div>
+    </div>
+  </section>
+
+  <hr class="rule" />
+
+  <section>
+    <div class="eyebrow">03 — Two voices, one restraint</div>
+    <h2>Fraunces names the car. Inter says everything else.</h2>
+    <div class="grid2">
+      <div class="spec">
+        <div class="eyebrow">Display — Fraunces</div>
+        <div class="big">2024 Lamborghini Huracán</div>
+        <p>The name of a car is set in the display serif. Optical sizing on, tight tracking.</p>
+      </div>
+      <div class="spec">
+        <div class="eyebrow">Body &amp; UI — Inter</div>
+        <div style="font-size:1rem;color:var(--fog)">A private dealership for high-value motorcars in Islamabad.
+          A considered selection, acquired, never simply bought.</div>
+        <p>Eyebrows are Inter, uppercase, 0.18em tracking.</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule" />
+
+  <section>
+    <div class="eyebrow">04 — The accent is a gradient</div>
+    <h2>Brushed metal, used sparingly.</h2>
+    <p>On the website the silver arrives as a gradient, not a flat colour. It fills the primary call to action and
+      is clipped into large display numerals. <strong>Never set body copy in it</strong> — the gradient's darkest stop
+      is only AA-large. The dashboard uses flat steel and no gradient.</p>
+    <div style="display:flex;gap:34px;align-items:center;flex-wrap:wrap;padding:10px 0">
+      <button class="btn" type="button">Request a viewing</button>
+      <span class="price">Rs 235,000,000</span>
+    </div>
+    <div class="rule" style="max-width:420px"></div>
+    <p style="font-size:.84rem">The hairline fades in and out from transparent. It replaces the old gold rule.</p>
+  </section>
+
+  <hr class="rule" />
+
+  <section>
+    <div class="eyebrow">05 — Signals</div>
+    <h2>Semantic colour is not the accent.</h2>
+    <p>Status colour is chromatic and stays separate from the silver. Each surface needs its own value — a signal
+      tuned for a white card fails on a black one.</p>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Signal</th><th>Website (on #141414)</th><th class="n">ratio</th><th>Dashboard (on #FFFFFF)</th><th class="n">ratio</th></tr></thead>
+        <tbody>
+          <tr><td>Good</td><td><span class="dot" style="background:#598960"></span>#598960</td><td class="n">4.54</td><td><span class="dot" style="background:#4F7A55"></span>#4F7A55</td><td class="n">4.94</td></tr>
+          <tr><td>Amber</td><td><span class="dot" style="background:#C0741F"></span>#C0741F</td><td class="n">5.05</td><td><span class="dot" style="background:#AA671B"></span>#AA671B</td><td class="n">4.50</td></tr>
+          <tr><td>Red</td><td><span class="dot" style="background:#C65E52"></span>#C65E52</td><td class="n">4.50</td><td><span class="dot" style="background:#B4483B"></span>#B4483B</td><td class="n">5.34</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr class="rule" />
+
+  <section>
+    <div class="eyebrow">06 — Wordmark usage</div>
+    <h2>One lockup, two inks.</h2>
+    <p>The script "The" over a condensed Didone "COLLECTION". It is <strong>monochrome</strong>: white artwork on dark
+      surfaces, black artwork on light ones. The lockup is 1.69:1 — set a height and let the width follow. Give it
+      clear space of at least the cap-height of "COLLECTION" on every side.</p>
+    <div class="grid2">
+      <div style="background:var(--noir);border:1px solid rgba(139,141,144,.25);border-radius:8px;padding:32px;display:flex;justify-content:center">
+        <img src="the-collection-logo.svg" alt="The Collection, white artwork" style="width:74%;height:auto" />
+      </div>
+      <div style="background:var(--alabaster);border-radius:8px;padding:32px;display:flex;justify-content:center">
+        <img src="the-collection-logo-dark.svg" alt="The Collection, black artwork" style="width:74%;height:auto" />
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="do"><b>Do</b><p>White lockup on noir or graphite. Black lockup on alabaster or white.</p></div>
+      <div class="dont"><b>Never</b><p>Never recolour it, never reintroduce a gold "COLLECTION", never stretch it — the
+        aspect is fixed at 1.69:1.</p></div>
+    </div>
+    <p style="font-size:.84rem;color:var(--platinum-dim)">
+      <strong>Outstanding from the client:</strong> a vector (SVG) and a <strong>square mark</strong>. A 1.69:1 wordmark
+      is not legible at favicon size; the current favicon is an interim crop of the Didone "C" from the lockup.</p>
+  </section>
+
+  <hr class="rule" />
+
+  <section>
+    <div class="eyebrow">07 — The car is the hero</div>
+    <h2>The brand in use.</h2>
+    <p>Photography carries the colour; the interface never competes with it. Surfaces are black, type is white, and
+      the only shine in the room is the silver on a price or a call to action. If a layout feels decorated, remove
+      something.</p>
+  </section>
+
+</div>
+</body>
+</html>
