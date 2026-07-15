@@ -12,6 +12,10 @@ interface Props {
   car: Car | null;
   /** In the admin "All showrooms" overview the sheet is view-only. */
   readOnly?: boolean;
+  /** A photographer edits details but may not change status or delete (both are
+   *  admin/partner actions, and RLS/the DB guard block them regardless). */
+  canManageStatus?: boolean;
+  canDelete?: boolean;
   onClose: () => void;
   onEdit: (id: string) => void;
   onStatusChange: (id: string, status: CarStatus) => void;
@@ -23,7 +27,7 @@ interface Props {
  * NotificationsSheet pattern. Additive to the inventory card — the card keeps
  * its own inline status toggle.
  */
-export function CarDetailSheet({ car, readOnly = false, onClose, onEdit, onStatusChange, onDelete }: Props) {
+export function CarDetailSheet({ car, readOnly = false, canManageStatus = true, canDelete = true, onClose, onEdit, onStatusChange, onDelete }: Props) {
   if (!car) {
     return (
       <Sheet open={false} onOpenChange={(o) => !o && onClose()}>
@@ -85,32 +89,36 @@ export function CarDetailSheet({ car, readOnly = false, onClose, onEdit, onStatu
 
         {!readOnly && (
         <section className="p-6 space-y-3">
-          <div>
-            <div className="eyebrow mb-2">Status</div>
-            <div className="flex items-center gap-1.5">
-              {STATUSES.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => onStatusChange(car.id, s)}
-                  className={`flex-1 py-1.5 rounded border ${car.status === s ? "bg-noir text-white border-noir" : "border-border text-ink-60 hover:border-accent/40"}`}
-                  style={{ fontSize: "0.68rem", letterSpacing: "0.06em", textTransform: "uppercase" }}
-                >
-                  {s}
-                </button>
-              ))}
+          {canManageStatus && (
+            <div>
+              <div className="eyebrow mb-2">Status</div>
+              <div className="flex items-center gap-1.5">
+                {STATUSES.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => onStatusChange(car.id, s)}
+                    className={`flex-1 py-1.5 rounded border ${car.status === s ? "bg-noir text-white border-noir" : "border-border text-ink-60 hover:border-accent/40"}`}
+                    style={{ fontSize: "0.68rem", letterSpacing: "0.06em", textTransform: "uppercase" }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
           <div className="flex gap-2 pt-2">
             <Button className="flex-1 bg-noir text-white hover:bg-noir-700" onClick={() => onEdit(car.id)}>
               <Pencil size={14} className="mr-1.5" />Edit
             </Button>
-            <Button
-              variant="ghost"
-              className="text-signal-red hover:text-signal-red hover:bg-signal-red/5 border border-border"
-              onClick={() => onDelete(car.id)}
-            >
-              <Trash2 size={14} className="mr-1.5" />Delete
-            </Button>
+            {canDelete && (
+              <Button
+                variant="ghost"
+                className="text-signal-red hover:text-signal-red hover:bg-signal-red/5 border border-border"
+                onClick={() => onDelete(car.id)}
+              >
+                <Trash2 size={14} className="mr-1.5" />Delete
+              </Button>
+            )}
           </div>
         </section>
         )}

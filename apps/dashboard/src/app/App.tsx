@@ -66,6 +66,10 @@ export default function App() {
 
   const auth = authContextFromSession(session);
   const isAdmin = auth?.isAdmin ?? false;
+  // A photographer manages The Collection's inventory CONTENT only: they may add
+  // cars + edit details, but not publish/feature (admin-only), not change status,
+  // and not delete. The DB (0014/0019) enforces this; these flags hide the UI.
+  const isPhotographer = auth?.role === "photographer";
   const myShowroomId = auth?.showroomId;
 
   const handleSignOut = async () => {
@@ -418,10 +422,12 @@ export default function App() {
   if (!session) return <SignIn />;
 
   // Allowlist: only a recognized, fully-configured account reaches the dashboard
-  // — admin, or a partner WITH a showroom. Anything else (unknown/typo'd role, or
-  // a partner missing a showroom) is treated as not-set-up, so no misconfiguration
-  // can fall through to the all-showrooms fetch path.
-  const configured = auth?.role === "admin" || (auth?.role === "partner" && !!myShowroomId);
+  // — admin, or a partner/photographer WITH a showroom. Anything else (unknown/
+  // typo'd role, or a scoped role missing a showroom) is treated as not-set-up, so
+  // no misconfiguration can fall through to the all-showrooms fetch path.
+  const configured =
+    auth?.role === "admin" ||
+    ((auth?.role === "partner" || auth?.role === "photographer") && !!myShowroomId);
   if (!configured) {
     return (
       <div className="min-h-screen bg-noir text-cream flex items-center justify-center px-6 text-center">
@@ -557,6 +563,9 @@ export default function App() {
               activeShowroomId={isAdmin ? effectiveActive : undefined}
               onChangeShowroom={isAdmin ? setActiveShowroomId : undefined}
               uploadShowroomId={writeShowroomId ?? undefined}
+              canPublish={isAdmin}
+              canManageStatus={!isPhotographer}
+              canDelete={!isPhotographer}
             />
           )}
         </main>
@@ -569,6 +578,8 @@ export default function App() {
         // context — e.g. a partner's car opened from a Matching result. You manage
         // a car only from within its own showroom context.
         readOnly={isAdmin && (effectiveActive === "all" || (openCarId ? cars.find((c) => c.id === openCarId)?.showroomId !== effectiveActive : false))}
+        canManageStatus={!isPhotographer}
+        canDelete={!isPhotographer}
         onClose={() => setOpenCarId(null)}
         onEdit={(id) => { setOpenCarId(null); setEditCarId(id); }}
         onStatusChange={changeCarStatus}

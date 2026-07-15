@@ -9,7 +9,7 @@ import {
 
 interface Props {
   showroomName?: string;
-  role?: "admin" | "partner";
+  role?: "admin" | "partner" | "photographer";
   userEmail?: string;
   onSignOut?: () => void;
 }
@@ -30,7 +30,8 @@ function monogram(name?: string): string {
  * viewport-edge collision (so it never overflows on a narrow screen).
  */
 export function AvatarMenu({ showroomName, role, userEmail, onSignOut }: Props) {
-  const roleLabel = role === "admin" ? "Admin" : role === "partner" ? "Partner" : "";
+  const roleLabel =
+    role === "admin" ? "Admin" : role === "partner" ? "Partner" : role === "photographer" ? "Photographer" : "";
   const identity = [showroomName, roleLabel].filter(Boolean).join(" · ");
 
   return (

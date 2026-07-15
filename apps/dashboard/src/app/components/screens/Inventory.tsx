@@ -37,6 +37,13 @@ interface Props {
   // The showroom new photo uploads are stamped into: the admin's active context,
   // or the partner's own showroom. Undefined ⇒ no upload target (admin in "All").
   uploadShowroomId?: string;
+  // Per-role capabilities. Publish/feature is admin-only; a photographer may not
+  // change status or delete. The DB (0014/0019) enforces all three regardless —
+  // these just hide the controls (and, for publish/feature, keep them out of the
+  // write payload so a routine non-admin edit never trips the guard).
+  canPublish?: boolean;
+  canManageStatus?: boolean;
+  canDelete?: boolean;
 }
 
 const STATUSES: CarStatus[] = ["available", "reserved", "sold"];
@@ -49,7 +56,7 @@ const emptyForm = (): FormState => ({
   image: "", photos: [], description: "", docsComplete: true,
 });
 
-export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onDelete, onOpenCar, editRequestId, onEditHandled, isAdmin = false, showrooms = [], activeShowroomId, onChangeShowroom, uploadShowroomId }: Props) {
+export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onDelete, onOpenCar, editRequestId, onEditHandled, isAdmin = false, showrooms = [], activeShowroomId, onChangeShowroom, uploadShowroomId, canPublish = false, canManageStatus = true, canDelete = true }: Props) {
   const [filter, setFilter] = useState<CarStatus | "all">("all");
   const [q, setQ] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -129,6 +136,13 @@ export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onD
     const photos = (form.photos ?? []).map((p) => p.trim()).filter(Boolean);
     // Always PKR — the dashboard is single-currency.
     const payload = { ...form, photos, image: photos[0] || defaultImage, currency: "PKR" };
+    // Publish/feature are admin-only. A non-admin form never sends them, so the
+    // columns are omitted from the write and the DB keeps its values — the guard
+    // trigger then has nothing to reject on a routine edit.
+    if (!canPublish) {
+      delete payload.published;
+      delete payload.featured;
+    }
     if (editingId) onUpdate(editingId, payload);
     else onAdd(payload);
     // These uploads are now saved — do NOT clean them up on close.
@@ -435,10 +449,19 @@ export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onD
             </div>
             <div className="col-span-2">
               <Label className="mb-1.5 block">Status</Label>
-              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as CarStatus })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-              </Select>
+              {canManageStatus ? (
+                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as CarStatus })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+              ) : (
+                // Photographer: status is admin-only. Shown read-only for context;
+                // new cars are added as available.
+                <div className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-ink-60" style={{ fontSize: "0.85rem" }}>
+                  <span style={{ textTransform: "capitalize" }}>{form.status}</span>
+                  <span className="text-ink-40" style={{ fontSize: "0.72rem" }}>Set by The Collection</span>
+                </div>
+              )}
             </div>
             <div className="col-span-2 flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2.5">
               <div className="min-w-0">
@@ -447,6 +470,33 @@ export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onD
               </div>
               <Switch checked={form.docsComplete ?? true} onCheckedChange={(v) => setForm({ ...form, docsComplete: v })} />
             </div>
+            {canPublish && (
+              // Admin only — the public-website controls. Hidden from partner and
+              // photographer forms; the DB guard (0014) enforces it regardless.
+              <div className="col-span-2 flex flex-col gap-3 rounded-md border border-border px-3 py-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <Label className="cursor-default block" style={{ fontSize: "0.85rem" }}>Published</Label>
+                    <p className="text-ink-40 mt-0.5" style={{ fontSize: "0.72rem" }}>Show this car on The Collection's public website.</p>
+                  </div>
+                  <Switch
+                    checked={form.published ?? false}
+                    onCheckedChange={(v) => setForm({ ...form, published: v, featured: v ? form.featured : false })}
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <Label className="cursor-default block" style={{ fontSize: "0.85rem" }}>Featured</Label>
+                    <p className="text-ink-40 mt-0.5" style={{ fontSize: "0.72rem" }}>Show in the website's Featured strip. Requires Published.</p>
+                  </div>
+                  <Switch
+                    checked={form.featured ?? false}
+                    disabled={!(form.published ?? false)}
+                    onCheckedChange={(v) => setForm({ ...form, featured: v })}
+                  />
+                </div>
+              </div>
+            )}
             <div className="col-span-2">
               <Label className="mb-1.5 block">Description</Label>
               <Textarea
@@ -538,7 +588,7 @@ export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onD
             </div>
           </div>
           <DialogFooter className="mt-4 sm:justify-between">
-            {editingId && onDelete ? (
+            {editingId && onDelete && canDelete ? (
               <Button
                 variant="ghost"
                 className="text-signal-red hover:text-signal-red hover:bg-signal-red/5"

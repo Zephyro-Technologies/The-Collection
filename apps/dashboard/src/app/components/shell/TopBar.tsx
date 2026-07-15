@@ -11,7 +11,7 @@ interface Props {
   isAdmin?: boolean;
   /** The signed-in user's own showroom name + role + email — the avatar menu. */
   showroomName?: string;
-  role?: "admin" | "partner";
+  role?: "admin" | "partner" | "photographer";
   userEmail?: string;
   onSignOut?: () => void;
   customers: Customer[];

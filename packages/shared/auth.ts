@@ -8,7 +8,12 @@
 import { supabase } from "./supabase";
 import type { Session } from "@supabase/supabase-js";
 
-export type AppRole = "admin" | "partner";
+// admin = The Collection (all showrooms, everything). partner = one showroom's
+// inventory. photographer = The Collection's inventory CONTENT only — add cars +
+// edit photos/specs, no delete / status / publish / feature and nothing else
+// (see the RLS in migrations 0006/0014/0019). isAdmin stays role==='admin', so a
+// photographer is a non-admin scoped, like a partner, to its showroom claim.
+export type AppRole = "admin" | "partner" | "photographer";
 
 export interface AuthContext {
   userId: string;
