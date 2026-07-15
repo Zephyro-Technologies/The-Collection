@@ -1,16 +1,16 @@
 // The Collection — enquiries + matching (admin/Collection-only).
 //
-// Backed by the `enquiries` table + the match_enquiry / match_selling_enquiry
-// SQL functions (migrations 0010/0011). RLS restricts everything here to the
-// admin (app_role()='admin'); a partner's queries return nothing and their
-// realtime subscription receives nothing. Single-value car criteria per enquiry
-// (v1). Matching is rules-based, on-demand, and spans ALL showrooms' inventory
-// plus active selling enquiries (the admin's RLS lets the SECURITY INVOKER
-// functions read every showroom).
+// Backed by the `enquiries` table + the match_enquiry SQL function (migrations
+// 0010/0017). RLS restricts everything here to the admin (app_role()='admin'); a
+// partner's queries return nothing and their realtime subscription receives
+// nothing. Single-value car criteria per enquiry (v1). Matching is rules-based,
+// on-demand, and spans ALL showrooms' inventory (the admin's RLS lets the
+// SECURITY INVOKER function read every showroom). Only BUYING enquiries exist —
+// a car offered for sale is added to inventory instead (migrations 0016-0018).
 
 import { supabase } from "./supabase";
 
-export type EnquiryType = "buying" | "selling";
+export type EnquiryType = "buying";
 export type EnquiryStatus = "active" | "fulfilled" | "dismissed" | "archived";
 export type EnquiryChannel = "whatsapp" | "instagram" | "messenger" | "phone" | "walk_in" | "other";
 export type MatchTier = "exact" | "possible";
@@ -24,24 +24,22 @@ export interface Enquiry {
   customerPhone: string;
   customerId: string | null;
   channel: EnquiryChannel | null;
-  // car criteria — per-type meaning:
-  //   selling: the offered car's concrete attributes.
-  //   buying:  year = MIN desired year, color = preferred, mileageMaxKm = MAX
-  //            acceptable, docsComplete = REQUIRES docs (true) / any (null),
-  //            price = budget (max).
+  // car criteria — a buyer's wishlist: year = MIN desired year, color = preferred,
+  // mileageMaxKm = MAX acceptable, docsComplete = REQUIRES docs (true) / any
+  // (null), price = budget (max).
   make: string;
   model: string;
   variant: string | null;
   year: number | null;
   color: string | null;
-  mileageKm: number | null;      // selling: actual mileage
-  mileageMaxKm: number | null;   // buying: max acceptable mileage
+  mileageKm: number | null;      // vestigial (buyers use mileageMaxKm)
+  mileageMaxKm: number | null;   // buyer's max acceptable mileage
   docsComplete: boolean | null;
   price: number | null;
   currency: string;
   notes: string | null;
   // outcome
-  fulfilledSource: "inventory" | "selling" | null;
+  fulfilledSource: "inventory" | null;
   fulfilledRefId: string | null;
   fulfilledAt: string | null;
   // meta
@@ -70,7 +68,7 @@ interface EnquiryRow {
   price: number | null;
   currency: string;
   notes: string | null;
-  fulfilled_source: "inventory" | "selling" | null;
+  fulfilled_source: "inventory" | null;
   fulfilled_ref_id: string | null;
   fulfilled_at: string | null;
   created_by: string | null;
@@ -100,13 +98,15 @@ export interface EnquiryInput {
   notes?: string | null;
 }
 
-/** A match row from match_enquiry(): an inventory car OR a selling enquiry that
- *  fits a buying enquiry, with its confidence tier. */
+/** A match row from match_enquiry(): an inventory car that fits a buying enquiry,
+ *  with its confidence tier. (`source` is always 'inventory' — sellers are now
+ *  inventory. The customer/photo columns keep the DB function's 18-col shape;
+ *  customerName/Phone/channel are always null for an inventory row.) */
 export interface EnquiryMatch {
-  source: "inventory" | "selling";
+  source: "inventory";
   tier: MatchTier;
-  refId: string;                 // inventory.id or enquiries.id
-  showroomId: string | null;     // inventory only
+  refId: string;                 // inventory.id
+  showroomId: string | null;
   showroomName: string | null;
   make: string;
   model: string;
@@ -116,30 +116,11 @@ export interface EnquiryMatch {
   price: number | null;
   currency: string | null;
   status: string | null;         // inventory car_status
-  docsComplete: boolean | null;  // selling only
-  customerName: string | null;   // selling only
-  customerPhone: string | null;  // selling only
+  docsComplete: boolean | null;
+  customerName: string | null;   // always null (legacy shape)
+  customerPhone: string | null;  // always null (legacy shape)
   channel: EnquiryChannel | null;
-  photo: string | null;          // inventory only
-}
-
-/** A reverse match from match_selling_enquiry(): an active buyer waiting for the
- *  offered car. */
-export interface SellingMatch {
-  tier: MatchTier;
-  refId: string;                 // buying enquiry id
-  customerName: string;
-  customerPhone: string;
-  channel: EnquiryChannel | null;
-  make: string;
-  model: string;
-  variant: string | null;
-  year: number | null;           // buyer's min desired year
-  mileageMaxKm: number | null;   // buyer's max acceptable
-  price: number | null;          // buyer's budget
-  currency: string | null;
-  docsRequired: boolean | null;
-  createdAt: string;
+  photo: string | null;
 }
 
 // --- mappers ---------------------------------------------------------------
@@ -256,12 +237,12 @@ export async function updateEnquiry(id: string, input: EnquiryInput): Promise<En
   return rowToEnquiry(data as EnquiryRow);
 }
 
-/** Change lifecycle status. When fulfilling, optionally record what it converted
- *  against (a matched inventory car or selling enquiry). */
+/** Change lifecycle status. When fulfilling, optionally record the matched
+ *  inventory car it converted against. */
 export async function updateEnquiryStatus(
   id: string,
   status: EnquiryStatus,
-  fulfilled?: { source: "inventory" | "selling"; refId: string },
+  fulfilled?: { source: "inventory"; refId: string },
 ): Promise<Enquiry> {
   const patch: Record<string, unknown> = { status };
   if (status === "fulfilled") {
@@ -300,8 +281,8 @@ export async function deleteEnquiry(id: string): Promise<void> {
 
 // --- matching (on-demand, rules-based, SECURITY INVOKER RPCs) --------------
 
-/** Matches for a BUYING enquiry: inventory (all showrooms) + active selling
- *  enquiries, each tiered exact/possible. Exact-first, ordered by the function. */
+/** Matches for a buying enquiry: inventory across all showrooms, each tiered
+ *  exact/possible. Exact-first, ordered by the function. */
 export async function matchEnquiry(id: string): Promise<EnquiryMatch[]> {
   const { data, error } = await supabase.rpc("match_enquiry", { p_enquiry_id: id });
   if (error) throw error;
@@ -324,28 +305,6 @@ export async function matchEnquiry(id: string): Promise<EnquiryMatch[]> {
     customerPhone: (r.customer_phone as string) ?? null,
     channel: (r.channel as EnquiryChannel) ?? null,
     photo: (r.photo as string) ?? null,
-  }));
-}
-
-/** Reverse: active BUYING enquiries (buyers) waiting for a SELLING enquiry's car. */
-export async function matchSellingEnquiry(id: string): Promise<SellingMatch[]> {
-  const { data, error } = await supabase.rpc("match_selling_enquiry", { p_enquiry_id: id });
-  if (error) throw error;
-  return (data as Array<Record<string, unknown>>).map((r) => ({
-    tier: r.tier as MatchTier,
-    refId: r.ref_id as string,
-    customerName: r.customer_name as string,
-    customerPhone: r.customer_phone as string,
-    channel: (r.channel as EnquiryChannel) ?? null,
-    make: r.make as string,
-    model: r.model as string,
-    variant: (r.variant as string) ?? null,
-    year: (r.year as number) ?? null,
-    mileageMaxKm: (r.mileage_max_km as number) ?? null,
-    price: (r.price as number) ?? null,
-    currency: (r.currency as string) ?? null,
-    docsRequired: (r.docs_required as boolean) ?? null,
-    createdAt: r.created_at as string,
   }));
 }
 

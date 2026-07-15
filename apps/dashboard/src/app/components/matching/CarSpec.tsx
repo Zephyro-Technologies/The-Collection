@@ -12,7 +12,7 @@
 // The criteria chip is an OUTLINE chip on purpose — the match-count chips are
 // FILLED. A spec should never be misread as a match count.
 
-import type { Enquiry, SellingMatch } from "@collection/shared";
+import type { Enquiry } from "@collection/shared";
 import { formatCurrency } from "../../data/mock";
 
 export interface Spec {
@@ -27,8 +27,7 @@ export interface Spec {
 const km = (n: number) => `${n.toLocaleString()} km`;
 
 interface Criteria {
-  /** Buying criteria are BOUNDS (year floor, mileage/price ceiling); selling are actuals. */
-  buying: boolean;
+  /** A buyer's wishlist — BOUNDS: year floor, mileage/price ceiling. */
   year?: number | null;
   mileage?: number | null;
   price?: number | null;
@@ -38,56 +37,28 @@ interface Criteria {
 }
 
 // Reading order: broadest constraint to finest — year, mileage, money, colour, docs.
-function build({ buying, year, mileage, price, currency, color, docs }: Criteria): Spec[] {
+function build({ year, mileage, price, currency, color, docs }: Criteria): Spec[] {
   const out: Spec[] = [];
 
-  if (year != null) {
-    out.push(buying
-      ? { label: "Year", short: `${year}+`, long: `${year} or newer` }
-      : { label: "Year", short: String(year), long: String(year) });
-  }
-  if (mileage != null) {
-    out.push(buying
-      ? { label: "Max mileage", short: `≤ ${km(mileage)}`, long: km(mileage) }
-      : { label: "Mileage", short: km(mileage), long: km(mileage) });
-  }
+  if (year != null) out.push({ label: "Year", short: `${year}+`, long: `${year} or newer` });
+  if (mileage != null) out.push({ label: "Max mileage", short: `≤ ${km(mileage)}`, long: km(mileage) });
   if (price != null) {
     const v = formatCurrency(price, currency ?? "PKR");
-    out.push(buying
-      ? { label: "Budget", short: `≤ ${v}`, long: v }
-      : { label: "Asking", short: v, long: v });
+    out.push({ label: "Budget", short: `≤ ${v}`, long: v });
   }
   if (color) out.push({ label: "Colour", short: color, long: color });
-  if (docs === true) {
-    out.push(buying
-      ? { label: "Documents", short: "Full docs", long: "Complete originals required" }
-      : { label: "Documents", short: "Full docs", long: "Complete originals" });
-  }
+  if (docs === true) out.push({ label: "Documents", short: "Full docs", long: "Complete originals required" });
   return out;
 }
 
 export function enquirySpecs(e: Enquiry): Spec[] {
-  const buying = e.type === "buying";
   return build({
-    buying,
     year: e.year,
-    mileage: buying ? e.mileageMaxKm : e.mileageKm,
+    mileage: e.mileageMaxKm,
     price: e.price,
     currency: e.currency,
     color: e.color,
     docs: e.docsComplete,
-  });
-}
-
-/** A waiting buyer surfaced by the reverse match — always a buying criteria set. */
-export function buyerSpecs(r: SellingMatch): Spec[] {
-  return build({
-    buying: true,
-    year: r.year,
-    mileage: r.mileageMaxKm,
-    price: r.price,
-    currency: r.currency,
-    docs: r.docsRequired,
   });
 }
 

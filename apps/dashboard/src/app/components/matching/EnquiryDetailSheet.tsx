@@ -1,28 +1,27 @@
 import { useEffect, useState } from "react";
-import { Phone, Car as CarIcon, User, Check, X, RotateCw, Pencil, Trash2, Archive, Store, ExternalLink } from "lucide-react";
+import { Phone, User, Check, X, RotateCw, Pencil, Trash2, Archive, Store, ExternalLink } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "../ui/sheet";
 import { Button } from "../ui/button";
 import { StatusPill } from "../common/StatusPill";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
 import {
-  matchEnquiry, matchSellingEnquiry,
-  type Enquiry, type EnquiryMatch, type SellingMatch, type MatchTier,
+  matchEnquiry,
+  type Enquiry, type EnquiryMatch, type MatchTier,
 } from "@collection/shared";
-import { formatCurrency, relativeAge } from "../../data/mock";
-import { CarName, SpecChips, SpecGrid, enquirySpecs, buyerSpecs } from "./CarSpec";
+import { formatCurrency } from "../../data/mock";
+import { CarName, SpecGrid, enquirySpecs } from "./CarSpec";
 import { channelLabel } from "./channel";
 
 interface Props {
   enquiry: Enquiry | null;
   onClose: () => void;
   onEdit: (e: Enquiry) => void;
-  onStatus: (id: string, status: "fulfilled" | "dismissed" | "archived", fulfilled?: { source: "inventory" | "selling"; refId: string }) => void;
+  onStatus: (id: string, status: "fulfilled" | "dismissed" | "archived", fulfilled?: { source: "inventory"; refId: string }) => void;
   onRenew: (id: string) => void;
   onDelete: (id: string) => void;
   onOpenCar: (carId: string) => void;
-  // Injectable for previews/tests; default to the real match RPCs.
+  // Injectable for previews/tests; defaults to the real match RPC.
   getBuyingMatches?: (id: string) => Promise<EnquiryMatch[]>;
-  getSellingMatches?: (id: string) => Promise<SellingMatch[]>;
 }
 
 const daysLeft = (iso: string) => Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000);
@@ -48,30 +47,27 @@ function contactHref(phone: string, channel: string | null) {
   return `tel:${phone}`;
 }
 
-export function EnquiryDetailSheet({ enquiry, onClose, onEdit, onStatus, onRenew, onDelete, onOpenCar, getBuyingMatches = matchEnquiry, getSellingMatches = matchSellingEnquiry }: Props) {
+export function EnquiryDetailSheet({ enquiry, onClose, onEdit, onStatus, onRenew, onDelete, onOpenCar, getBuyingMatches = matchEnquiry }: Props) {
   const [matches, setMatches] = useState<EnquiryMatch[] | null>(null);
-  const [reverse, setReverse] = useState<SellingMatch[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const id = enquiry?.id;
-  const type = enquiry?.type;
   // Re-run matching when the enquiry's CRITERIA change too (updatedAt bumps on any
   // edit) — so if another admin edits this open enquiry live, the match list is
-  // refetched to stay consistent with the header, not just [id, type].
+  // refetched to stay consistent with the header, not just [id].
   const updatedAt = enquiry?.updatedAt;
 
   useEffect(() => {
-    if (!id || !type) { setMatches(null); setReverse(null); return; }
+    if (!id) { setMatches(null); return; }
     let alive = true;
-    setLoading(true); setError(null); setMatches(null); setReverse(null);
-    const run = type === "buying" ? getBuyingMatches(id) : getSellingMatches(id);
-    run
-      .then((res) => { if (!alive) return; if (type === "buying") setMatches(res as EnquiryMatch[]); else setReverse(res as SellingMatch[]); })
+    setLoading(true); setError(null); setMatches(null);
+    getBuyingMatches(id)
+      .then((res) => { if (alive) setMatches(res); })
       .catch((e) => { if (alive) setError(e instanceof Error ? e.message : "Failed to load matches."); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [id, type, updatedAt]);
+  }, [id, updatedAt]);
 
   // Close this sheet before opening the car sheet (avoid stacked modal overlays).
   const openCar = (carId: string) => { onClose(); onOpenCar(carId); };
@@ -87,15 +83,15 @@ export function EnquiryDetailSheet({ enquiry, onClose, onEdit, onStatus, onRenew
       <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto p-0">
         <SheetHeader className="p-6 border-b border-border">
           <div className="eyebrow mb-2 flex items-center gap-1.5">
-            {e.type === "buying" ? <User size={11} /> : <CarIcon size={11} />}
-            {e.type} inquiry
+            <User size={11} />
+            Buying inquiry
             <span className="ml-1"><ExpiryChip e={e} /></span>
           </div>
           {/* The car is the headline; the variant its second tier. */}
           <SheetTitle className="editorial" style={{ fontSize: "1.6rem", lineHeight: 1.15 }}>{e.make} {e.model}</SheetTitle>
           {e.variant && <div className="text-ink-60 mt-0.5" style={{ fontSize: "0.9rem" }}>{e.variant}</div>}
           <SheetDescription className="sr-only">
-            {e.type === "buying" ? "Buying" : "Selling"} inquiry for {e.make} {e.model}
+            Buying inquiry for {e.make} {e.model}
             {specs.length ? `. ${specs.map((s) => `${s.label}: ${s.long}`).join(". ")}.` : "."}
           </SheetDescription>
 
@@ -133,55 +129,16 @@ export function EnquiryDetailSheet({ enquiry, onClose, onEdit, onStatus, onRenew
         </SheetHeader>
 
         <div className="p-6">
-          <div className="eyebrow mb-3 text-ink-60">{e.type === "buying" ? "Matches" : "Buyers waiting"}</div>
+          <div className="eyebrow mb-3 text-ink-60">Matches</div>
           {loading && <p className="text-ink-40" style={{ fontSize: "0.85rem" }}>Finding matches…</p>}
           {error && <p className="text-signal-red" style={{ fontSize: "0.85rem" }}>{error}</p>}
 
-          {/* BUYING → inventory + selling matches, grouped by tier */}
-          {e.type === "buying" && matches && (
+          {/* Inventory matches, grouped by tier */}
+          {matches && (
             matches.length === 0 ? <EmptyMatches /> : (
               <div className="space-y-6">
-                <MatchGroup tier="exact" items={matches.filter((m) => m.tier === "exact")} onOpenCar={openCar} onFulfill={(m) => onStatus(e.id, "fulfilled", { source: m.source, refId: m.refId })} money={money} />
-                <MatchGroup tier="possible" items={matches.filter((m) => m.tier === "possible")} onOpenCar={openCar} onFulfill={(m) => onStatus(e.id, "fulfilled", { source: m.source, refId: m.refId })} money={money} />
-              </div>
-            )
-          )}
-
-          {/* SELLING → reverse "buyers waiting" */}
-          {e.type === "selling" && reverse && (
-            reverse.length === 0 ? <EmptyMatches label="No active buyers waiting for this car." /> : (
-              <div className="space-y-4">
-                {(["exact", "possible"] as MatchTier[]).map((tier) => {
-                  const rows = reverse.filter((r) => r.tier === tier);
-                  if (rows.length === 0) return null;
-                  return (
-                    <section key={tier}>
-                      <div className="mb-2" style={{ fontSize: "0.72rem", letterSpacing: "0.08em", textTransform: "uppercase", color: tier === "exact" ? "var(--noir)" : "var(--ink-40)" }}>
-                        {tier} · {rows.length}
-                      </div>
-                      <div className="space-y-2">
-                        {rows.map((r) => (
-                          <div key={r.refId} className="rounded-lg border border-border p-3">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="text-noir truncate" style={{ fontSize: "0.9rem", fontWeight: 500 }}>{r.customerName}</div>
-                                <div className="text-ink-40" style={{ fontSize: "0.72rem" }}>asked {relativeAge(r.createdAt)}</div>
-                              </div>
-                              <a href={contactHref(r.customerPhone, r.channel)} className="shrink-0 inline-flex items-center gap-1 text-accent hover:text-noir transition-colors" style={{ fontSize: "0.8rem" }}>
-                                <Phone size={12} /> Contact
-                              </a>
-                            </div>
-                            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-                              <span className="text-ink-40 shrink-0" style={{ fontSize: "0.72rem" }}>wants</span>
-                              <CarName make={r.make} model={r.model} variant={r.variant} />
-                              <SpecChips specs={buyerSpecs(r)} />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  );
-                })}
+                <MatchGroup tier="exact" items={matches.filter((m) => m.tier === "exact")} onOpenCar={openCar} onFulfill={(m) => onStatus(e.id, "fulfilled", { source: "inventory", refId: m.refId })} money={money} />
+                <MatchGroup tier="possible" items={matches.filter((m) => m.tier === "possible")} onOpenCar={openCar} onFulfill={(m) => onStatus(e.id, "fulfilled", { source: "inventory", refId: m.refId })} money={money} />
               </div>
             )
           )}
@@ -192,22 +149,14 @@ export function EnquiryDetailSheet({ enquiry, onClose, onEdit, onStatus, onRenew
 }
 
 // Documents only earn a chip when they say something. The dealership's own stock
-// is docs-complete by default, so "Full docs" on every inventory card would be
-// noise — flag the EXCEPTION instead, and keep the seller's positive claim.
+// is docs-complete by default, so "Full docs" on every card would be noise — flag
+// the EXCEPTION instead (a car without full papers).
 function DocsFlag({ m }: { m: EnquiryMatch }) {
   if (m.docsComplete === false) {
     return (
       <span className="inline-flex items-center rounded-full bg-signal-amber/15 text-noir px-2 py-0.5"
         style={{ fontSize: "0.6rem", letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 600 }}>
         No full docs
-      </span>
-    );
-  }
-  if (m.source === "selling" && m.docsComplete === true) {
-    return (
-      <span className="inline-flex items-center rounded-full border border-border text-ink-60 px-2 py-0.5"
-        style={{ fontSize: "0.6rem", letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 600 }}>
-        Full docs
       </span>
     );
   }
@@ -240,23 +189,17 @@ function MatchGroup({
       </div>
       <div className="space-y-2">
         {items.map((m) => (
-          <div key={`${m.source}-${m.refId}`} className="rounded-lg border border-border overflow-hidden flex">
-            {m.source === "inventory" ? (
-              <div className="w-24 shrink-0 bg-platinum-soft">
-                <ImageWithFallback src={m.photo ?? ""} alt="" className="w-full h-full object-cover" />
-              </div>
-            ) : (
-              <div className="w-24 shrink-0 bg-platinum-soft flex items-center justify-center text-ink-40"><User size={20} /></div>
-            )}
+          <div key={m.refId} className="rounded-lg border border-border overflow-hidden flex">
+            <div className="w-24 shrink-0 bg-platinum-soft">
+              <ImageWithFallback src={m.photo ?? ""} alt="" className="w-full h-full object-cover" />
+            </div>
             <div className="flex-1 min-w-0 p-3">
               {/* Provenance — where it sits, and whether it's actually gettable. */}
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="inline-flex items-center gap-1 text-ink-40" style={{ fontSize: "0.62rem", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600 }}>
-                  {m.source === "inventory"
-                    ? <><Store size={10} /> {m.showroomName ?? "Inventory"}</>
-                    : <><User size={10} /> {m.customerName ?? "Seller"}</>}
+                  <Store size={10} /> {m.showroomName ?? "Inventory"}
                 </span>
-                {m.source === "inventory" && m.status && <StatusPill tone={m.status as "available" | "reserved" | "sold"} />}
+                {m.status && <StatusPill tone={m.status as "available" | "reserved" | "sold"} />}
                 <DocsFlag m={m} />
               </div>
 
@@ -274,13 +217,7 @@ function MatchGroup({
               </div>
 
               <div className="mt-2.5 flex items-center gap-2">
-                {m.source === "inventory" ? (
-                  <Button variant="outline" size="sm" onClick={() => onOpenCar(m.refId)}><ExternalLink size={12} className="mr-1" />View car</Button>
-                ) : m.customerPhone ? (
-                  <a href={contactHref(m.customerPhone, m.channel)} className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-noir hover:border-accent/40 transition-colors" style={{ fontSize: "0.78rem" }}>
-                    <Phone size={12} /> Contact seller
-                  </a>
-                ) : null}
+                <Button variant="outline" size="sm" onClick={() => onOpenCar(m.refId)}><ExternalLink size={12} className="mr-1" />View car</Button>
                 <Button variant="ghost" size="sm" onClick={() => onFulfill(m)}><Check size={12} className="mr-1" />Mark fulfilled</Button>
               </div>
             </div>

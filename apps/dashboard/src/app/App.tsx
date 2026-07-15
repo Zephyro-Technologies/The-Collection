@@ -154,14 +154,14 @@ export default function App() {
   }, [isAdmin, loadEnquiries]);
 
   const handleCreateEnquiry = async (input: EnquiryInput) => {
-    try { await createEnquiry(input); loadEnquiries(); toast.success(`${input.type === "buying" ? "Buying" : "Selling"} inquiry created.`); }
+    try { await createEnquiry(input); loadEnquiries(); toast.success("Inquiry created."); }
     catch (e) { toast.error(e instanceof Error ? e.message : "Could not create inquiry."); }
   };
   const handleUpdateEnquiry = async (id: string, input: EnquiryInput) => {
     try { await updateEnquiry(id, input); loadEnquiries(); toast.success("Inquiry saved."); }
     catch (e) { toast.error(e instanceof Error ? e.message : "Could not save inquiry."); }
   };
-  const handleEnquiryStatus = async (id: string, status: "fulfilled" | "dismissed" | "archived", fulfilled?: { source: "inventory" | "selling"; refId: string }) => {
+  const handleEnquiryStatus = async (id: string, status: "fulfilled" | "dismissed" | "archived", fulfilled?: { source: "inventory"; refId: string }) => {
     try { await updateEnquiryStatus(id, status, fulfilled); loadEnquiries(); toast.success(`Inquiry ${status}.`); }
     catch (e) { toast.error(e instanceof Error ? e.message : "Could not update inquiry."); }
   };

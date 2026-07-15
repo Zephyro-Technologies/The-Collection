@@ -6,12 +6,11 @@ import { Textarea } from "../ui/textarea";
 import { Switch } from "../ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Button } from "../ui/button";
-import type { Enquiry, EnquiryInput, EnquiryType, EnquiryChannel } from "@collection/shared";
+import type { Enquiry, EnquiryInput, EnquiryChannel } from "@collection/shared";
 import { channelLabel, ENQUIRY_CHANNELS } from "./channel";
 
 interface Props {
   open: boolean;
-  type: EnquiryType;
   /** When set, the form edits this enquiry instead of creating a new one. */
   editing?: Enquiry | null;
   onClose: () => void;
@@ -39,9 +38,8 @@ const numOrNull = (s: string): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
-export function EnquiryForm({ open, type, editing, onClose, onSubmit }: Props) {
+export function EnquiryForm({ open, editing, onClose, onSubmit }: Props) {
   const [form, setForm] = useState<FormState>(empty());
-  const isBuying = type === "buying";
 
   useEffect(() => {
     if (!open) return;
@@ -55,8 +53,7 @@ export function EnquiryForm({ open, type, editing, onClose, onSubmit }: Props) {
         variant: editing.variant ?? "",
         year: editing.year != null ? String(editing.year) : "",
         color: editing.color ?? "",
-        mileage: (isBuying ? editing.mileageMaxKm : editing.mileageKm) != null
-          ? String(isBuying ? editing.mileageMaxKm : editing.mileageKm) : "",
+        mileage: editing.mileageMaxKm != null ? String(editing.mileageMaxKm) : "",
         docs: editing.docsComplete === true,
         price: editing.price != null ? String(editing.price) : "",
         notes: editing.notes ?? "",
@@ -64,7 +61,7 @@ export function EnquiryForm({ open, type, editing, onClose, onSubmit }: Props) {
     } else {
       setForm(empty());
     }
-  }, [open, editing, isBuying]);
+  }, [open, editing]);
 
   const set = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
 
@@ -72,7 +69,7 @@ export function EnquiryForm({ open, type, editing, onClose, onSubmit }: Props) {
     if (!form.customerName.trim() || !form.customerPhone.trim() || !form.make.trim() || !form.model.trim()) return;
     const mileage = numOrNull(form.mileage);
     const input: EnquiryInput = {
-      type,
+      type: "buying",
       customerName: form.customerName,
       customerPhone: form.customerPhone,
       channel: (form.channel || null) as EnquiryChannel | null,
@@ -81,16 +78,16 @@ export function EnquiryForm({ open, type, editing, onClose, onSubmit }: Props) {
       variant: form.variant,
       year: numOrNull(form.year),
       color: form.color,
-      // buying: docs REQUIRES(true)/any(null); selling: HAS(true)/hasn't(false)
-      docsComplete: isBuying ? (form.docs ? true : null) : form.docs,
+      // A buyer's docs preference: REQUIRES full docs (true) or no preference (null).
+      docsComplete: form.docs ? true : null,
       price: numOrNull(form.price),
       notes: form.notes,
-      ...(isBuying ? { mileageMaxKm: mileage } : { mileageKm: mileage }),
+      mileageMaxKm: mileage,
     };
     onSubmit(input);
   };
 
-  const title = editing ? `Edit ${type} inquiry` : isBuying ? "New buying inquiry" : "New selling inquiry";
+  const title = editing ? "Edit inquiry" : "New inquiry";
   const canSubmit = form.customerName.trim() && form.customerPhone.trim() && form.make.trim() && form.model.trim();
 
   return (
@@ -99,7 +96,7 @@ export function EnquiryForm({ open, type, editing, onClose, onSubmit }: Props) {
         <DialogHeader>
           <DialogTitle className="editorial">{title}</DialogTitle>
           <p className="text-ink-60 mt-1" style={{ fontSize: "0.82rem" }}>
-            {isBuying ? "Someone wanting to buy — the criteria to match against stock and sellers." : "Someone offering a car to the dealership — a car out in the market."}
+            Someone wanting to buy — the criteria to match against stock.
           </p>
         </DialogHeader>
 
@@ -115,17 +112,17 @@ export function EnquiryForm({ open, type, editing, onClose, onSubmit }: Props) {
             </Select>
           </div>
 
-          <div className="col-span-2 eyebrow text-ink-40 mt-1">{isBuying ? "Desired car" : "The car"}</div>
+          <div className="col-span-2 eyebrow text-ink-40 mt-1">Desired car</div>
           <div><Label className="mb-1.5 block">Make</Label><Input value={form.make} onChange={(e) => set({ make: e.target.value })} placeholder="Porsche" /></div>
           <div><Label className="mb-1.5 block">Model</Label><Input value={form.model} onChange={(e) => set({ model: e.target.value })} placeholder="911" /></div>
           <div className="col-span-2"><Label className="mb-1.5 block">Variant <span className="text-ink-40">(optional)</span></Label><Input value={form.variant} onChange={(e) => set({ variant: e.target.value })} placeholder="GT3 Touring" /></div>
-          <div><Label className="mb-1.5 block">{isBuying ? "Min year" : "Year"}</Label><Input type="number" value={form.year} onChange={(e) => set({ year: e.target.value })} placeholder="2021" /></div>
+          <div><Label className="mb-1.5 block">Min year</Label><Input type="number" value={form.year} onChange={(e) => set({ year: e.target.value })} placeholder="2021" /></div>
           <div><Label className="mb-1.5 block">Colour <span className="text-ink-40">(optional)</span></Label><Input value={form.color} onChange={(e) => set({ color: e.target.value })} placeholder="GT Silver" /></div>
-          <div><Label className="mb-1.5 block">{isBuying ? "Max mileage (km)" : "Mileage (km)"}</Label><Input type="number" value={form.mileage} onChange={(e) => set({ mileage: e.target.value })} placeholder={isBuying ? "20000" : "8400"} /></div>
-          <div><Label className="mb-1.5 block">{isBuying ? "Budget (PKR)" : "Asking price (PKR)"}</Label><Input type="number" value={form.price} onChange={(e) => set({ price: e.target.value })} /></div>
+          <div><Label className="mb-1.5 block">Max mileage (km)</Label><Input type="number" value={form.mileage} onChange={(e) => set({ mileage: e.target.value })} placeholder="20000" /></div>
+          <div><Label className="mb-1.5 block">Budget (PKR)</Label><Input type="number" value={form.price} onChange={(e) => set({ price: e.target.value })} /></div>
           <div className="col-span-2 flex items-center justify-between rounded-md border border-border px-3 py-2.5">
             <Label className="cursor-default" style={{ fontSize: "0.85rem" }}>
-              {isBuying ? "Requires complete original documents" : "Has complete original documents"}
+              Requires complete original documents
             </Label>
             <Switch checked={form.docs} onCheckedChange={(v) => set({ docs: v })} />
           </div>
