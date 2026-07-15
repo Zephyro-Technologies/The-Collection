@@ -11,10 +11,13 @@
    * It is an operator tool used all day, so it does not invert to dark. It
    * takes the same neutrals, the same silver family and no gold. */
 
-  /* Dark chrome (sidebar, primary buttons) — the only dark surfaces here. */
-  --noir-elevated: #141414;  /* raised dark surface */
-  --noir-700: #1C1C1C;       /* primary button hover */
-  --noir-600: #2C2C2C;       /* lighter charcoal */
+  /* Dark chrome (sidebar, primary buttons) — the only dark surfaces here. The
+     first two REFERENCE the shared neutrals (identical values) so they can't
+     drift from the brand source; --noir-600 is a dashboard-only shade with no
+     shared equivalent, so it stays a literal. */
+  --noir-elevated: var(--graphite);  /* #141414 — shared raised dark surface */
+  --noir-700: var(--charcoal);       /* #1C1C1C — shared, primary button hover */
+  --noir-600: #2C2C2C;               /* lighter charcoal — dashboard-only */
 
   /* ---- the accent -------------------------------------------------------
    * The accent is SILVER. On the dashboard's LIGHT work surfaces it is STEEL —
