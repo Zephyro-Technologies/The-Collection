@@ -4,6 +4,15 @@
 
 import { supabase } from "./supabase";
 
+/**
+ * The master showroom — "The Collection" itself. Fixed, seeded id (migration
+ * 0004). This is the ONLY showroom whose cars can appear on the public website
+ * (migration 0015 scopes the anon read to it), and the showroom a photographer is
+ * provisioned against. Both apps and any RLS-mirroring app filter must agree on
+ * this value, so it lives here rather than being hardcoded per call site.
+ */
+export const MASTER_SHOWROOM_ID = "11111111-1111-1111-1111-111111111111";
+
 export interface Showroom {
   id: string;
   slug: string;

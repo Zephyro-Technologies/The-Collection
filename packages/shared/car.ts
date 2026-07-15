@@ -31,4 +31,14 @@ export interface Car {
   // column). Only a docs-complete car can be an EXACT match for a buyer that
   // requires full docs — see match_enquiry (migration 0013).
   docsComplete?: boolean;
+  // Website visibility, ADMIN-ONLY (migration 0014). `published` = appears in the
+  // public Collection listing; `featured` = appears in the Featured strip
+  // (implies published). Both default false. Only an admin JWT may change them —
+  // a DB trigger enforces it — so the non-admin form omits them from its payload
+  // entirely, leaving these undefined (the mapper then leaves the columns alone).
+  published?: boolean;
+  featured?: boolean;
+  // Provenance (migration 0016). 'internal' | 'seller_migrated'. Read-only in the
+  // app — set by the DB default / the seller migration, never by the form.
+  source?: string;
 }

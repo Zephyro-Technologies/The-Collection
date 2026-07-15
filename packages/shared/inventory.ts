@@ -34,6 +34,9 @@ export interface InventoryRow {
   photos: string[] | null;
   description: string | null;
   docs_complete: boolean;
+  published: boolean;   // 0014 — website Collection listing
+  featured: boolean;    // 0014 — website Featured strip (implies published)
+  source: string;       // 0016 — 'internal' | 'seller_migrated'
   created_at: string;
   updated_at: string;
 }
@@ -65,19 +68,35 @@ export function rowToCar(row: InventoryRow): Car {
     // Older rows (pre-0013) may not carry the column; treat missing as true,
     // matching the DB default (the dealership's own stock has full docs).
     docsComplete: row.docs_complete ?? true,
+    // Website visibility + provenance (0014/0016). Rows fetched before those
+    // migrations won't carry the columns; fall back to the DB defaults.
+    published: row.published ?? false,
+    featured: row.featured ?? false,
+    source: row.source ?? "internal",
     addedAt: row.created_at,
   };
 }
 
 /** App `Car` fields → DB columns for insert/update. Excludes showroom_id, which
- *  is stamped ONLY on insert (a car keeps its owner across edits — see addCar). */
-function carToRow(input: CarInput): Omit<InventoryRow, "id" | "showroom_id" | "created_at" | "updated_at"> {
+ *  is stamped ONLY on insert (a car keeps its owner across edits — see addCar).
+ *  `published`/`featured` are emitted ONLY when the caller supplies them (the
+ *  admin form does; every other form leaves them undefined) so a non-admin write
+ *  omits the columns entirely and the DB keeps its values — the publish guard
+ *  trigger then has nothing to reject on a routine edit. `source` is never
+ *  written from the app (DB default / the seller migration set it). */
+type CarRowWrite = Omit<
+  InventoryRow,
+  "id" | "showroom_id" | "created_at" | "updated_at" | "published" | "featured" | "source"
+> &
+  Partial<Pick<InventoryRow, "published" | "featured">>;
+
+function carToRow(input: CarInput): CarRowWrite {
   const photos = input.photos?.length
     ? input.photos
     : input.image
     ? [input.image]
     : [];
-  return {
+  const row: CarRowWrite = {
     make: input.make,
     model: input.model,
     variant: input.variant ?? "",
@@ -93,6 +112,9 @@ function carToRow(input: CarInput): Omit<InventoryRow, "id" | "showroom_id" | "c
     // form's toggle is explicitly turned off for a rare no-docs car.
     docs_complete: input.docsComplete ?? true,
   };
+  if (input.published !== undefined) row.published = input.published;
+  if (input.featured !== undefined) row.featured = input.featured;
+  return row;
 }
 
 // --- queries ---------------------------------------------------------------
