@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Search, Pencil, Trash2, Loader2, ChevronUp, ChevronDown, X, LayoutGrid, LayoutList, Upload, AlertCircle } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Loader2, X, LayoutGrid, LayoutList, Upload, AlertCircle } from "lucide-react";
 import { SectionHeader } from "../common/SectionHeader";
 import { StatusPill } from "../common/StatusPill";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
@@ -12,8 +12,9 @@ import { Textarea } from "../ui/textarea";
 import { Switch } from "../ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import type { Car, CarStatus, Showroom } from "@collection/shared";
-import { uploadCarImage, deleteCarImage, isCarImageStorageUrl, isAllowedImageType, randomId, ALLOWED_IMAGE_LABEL } from "@collection/shared";
+import { uploadCarImage, deleteCarImage, isAllowedImageType, randomId, ALLOWED_IMAGE_LABEL } from "@collection/shared";
 import { ShowroomBar } from "../inventory/ShowroomBar";
+import { PhotoStrip } from "../inventory/PhotoStrip";
 import { formatCurrency } from "../../data/mock";
 
 interface Props {
@@ -187,14 +188,20 @@ export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onD
   // it here: App deletes removed photos only after a successful save, so removing
   // then cancelling never leaves a live car pointing at a deleted object.
   // Fire-and-forget: a failed delete must never block editing (harmless orphan).
-  const removePhoto = (i: number) => {
-    const url = (form.photos ?? [])[i];
-    setForm((f) => ({ ...f, photos: (f.photos ?? []).filter((_, idx) => idx !== i) }));
+  // By URL (not index) and useCallback-stable, so the memoized PhotoStrip doesn't
+  // re-render on unrelated form edits. Functional setForm + a ref keep deps empty.
+  const removePhoto = useCallback((url: string) => {
+    setForm((f) => ({ ...f, photos: (f.photos ?? []).filter((u) => u !== url) }));
     if (url && sessionUploadsRef.current.has(url)) {
       sessionUploadsRef.current.delete(url);
       void deleteCarImage(url).catch((err) => console.warn("[storage] photo delete failed (orphan left):", err));
     }
-  };
+  }, []);
+
+  // The full new order after a drag-reorder (from PhotoStrip). Stable, same reason.
+  const setPhotosOrder = useCallback((next: string[]) => {
+    setForm((f) => ({ ...f, photos: next }));
+  }, []);
 
   // Delete any images uploaded this session but never saved (they'd be orphans).
   const cleanupSessionUploads = () => {
@@ -211,18 +218,6 @@ export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onD
     setOpen(false);
     setEditingId(null);
   };
-
-  const movePhoto = (i: number, dir: -1 | 1) => {
-    setForm((f) => {
-      const next = [...(f.photos ?? [])];
-      const j = i + dir;
-      if (j < 0 || j >= next.length) return f;
-      [next[i], next[j]] = [next[j], next[i]];
-      return { ...f, photos: next };
-    });
-  };
-
-  const fileLabel = (url: string) => (isCarImageStorageUrl(url) ? "Uploaded" : "External URL");
 
   const openAdd = () => { if (!canAdd) return; setEditingId(null); setOpen(true); };
   const openEdit = (id: string) => { if (isAll) return; setEditingId(id); setOpen(true); };
@@ -559,31 +554,15 @@ export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onD
                 </div>
               ))}
 
-              {/* Uploaded thumbnails — cover (first) / reorder / remove */}
-              <div className="mt-2 space-y-2">
-                {photos.length === 0 && uploads.length === 0 && (
+              {/* Uploaded thumbnails — cover (first) / drag-to-reorder / remove.
+                  Capped height + overflow so a long list scrolls and lazy image
+                  loading only decodes the visible rows. */}
+              <div className="mt-2 max-h-[248px] overflow-y-auto pr-0.5">
+                {photos.length === 0 && uploads.length === 0 ? (
                   <p className="text-ink-40" style={{ fontSize: "0.8rem" }}>No photos yet.</p>
+                ) : (
+                  <PhotoStrip photos={photos} onReorder={setPhotosOrder} onRemove={removePhoto} />
                 )}
-                {photos.map((url, i) => (
-                  <div key={`${url}-${i}`} className="flex items-center gap-1.5">
-                    <span
-                      className={`shrink-0 w-12 text-center rounded px-1 py-0.5 ${i === 0 ? "bg-accent/15 text-noir" : "text-ink-40"}`}
-                      style={{ fontSize: "0.6rem", letterSpacing: "0.08em", textTransform: "uppercase" }}
-                    >
-                      {i === 0 ? "Cover" : i + 1}
-                    </span>
-                    <div className="shrink-0 h-11 w-16 overflow-hidden rounded border border-border bg-platinum-soft">
-                      <ImageWithFallback src={url} alt="" className="h-full w-full object-cover" />
-                    </div>
-                    <span className="flex-1 truncate text-ink-40" style={{ fontSize: "0.72rem" }}>{fileLabel(url)}</span>
-                    <button type="button" onClick={() => movePhoto(i, -1)} disabled={i === 0} aria-label="Move up"
-                      className="p-1.5 rounded text-ink-60 hover:text-noir disabled:opacity-30 disabled:cursor-not-allowed"><ChevronUp size={14} /></button>
-                    <button type="button" onClick={() => movePhoto(i, 1)} disabled={i === photos.length - 1} aria-label="Move down"
-                      className="p-1.5 rounded text-ink-60 hover:text-noir disabled:opacity-30 disabled:cursor-not-allowed"><ChevronDown size={14} /></button>
-                    <button type="button" onClick={() => removePhoto(i)} aria-label="Remove photo"
-                      className="p-1.5 rounded text-ink-60 hover:text-signal-red"><X size={14} /></button>
-                  </div>
-                ))}
               </div>
             </div>
           </div>
