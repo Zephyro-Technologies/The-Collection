@@ -479,7 +479,10 @@ function House() {
 export function Landing() {
   const reduce = useReducedMotion();
   const { cars, state } = useInventory();
-  const featured = cars.filter((c) => c.status === "available").slice(0, 3);
+  // The Featured strip is an editorial choice, not "the first 3 available": it
+  // shows the cars an admin has FEATURED (migration 0014; featured ⇒ published).
+  // Empty → the "between acquisitions" line below renders instead.
+  const featured = cars.filter((c) => c.featured);
   const marques = Array.from(new Set(cars.map((c) => c.make)));
   useDocumentTitle("The Collection · Private Luxury Motorcars, Islamabad · By Appointment");
   // Fade the scroll cue away once the visitor has begun to scroll.

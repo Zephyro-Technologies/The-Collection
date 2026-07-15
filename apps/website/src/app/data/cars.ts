@@ -9,7 +9,7 @@
 import type { Car, CarStatus } from "@collection/shared";
 
 export type { Car, CarStatus };
-export { listInventory, getCarById } from "@collection/shared";
+export { listInventory, getCarById, MASTER_SHOWROOM_ID } from "@collection/shared";
 
 /**
  * Formats a PKR amount using the Pakistani crore / lakh convention.

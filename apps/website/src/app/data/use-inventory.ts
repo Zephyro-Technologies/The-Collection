@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
-import { listInventory, type Car } from "./cars";
+import { listInventory, MASTER_SHOWROOM_ID, type Car } from "./cars";
 
 export type LoadState = "loading" | "error" | "ready";
 
 /**
- * Loads the full live inventory from Supabase (via @collection/shared) once,
- * with a retry. Every car is returned — available, reserved, and sold — so the
- * caller decides visibility and ordering.
+ * Loads the live inventory the public website is allowed to show, once, with a
+ * retry. The real boundary is RLS: the anon key only ever reads The Collection's
+ * PUBLISHED cars (migration 0015). The explicit `showroomId` scope here is
+ * belt-and-braces — it re-asserts "The Collection only" on the client so a partner
+ * car can never surface even if that policy regressed. Status is NOT filtered:
+ * published available, reserved and sold all show (the caller orders/filters).
  */
 export function useInventory() {
   const [cars, setCars] = useState<Car[]>([]);
@@ -20,7 +23,7 @@ export function useInventory() {
     const timer = setTimeout(() => {
       if (alive) setState("error");
     }, 12000);
-    listInventory()
+    listInventory({ showroomId: MASTER_SHOWROOM_ID })
       .then((c) => {
         if (alive) {
           clearTimeout(timer);

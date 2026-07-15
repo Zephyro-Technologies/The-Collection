@@ -7,7 +7,7 @@ import { StatusPill } from "../status-pill";
 import { WhatsAppIcon } from "../whatsapp-icon";
 import { Reveal } from "../reveal";
 import { CarCard } from "../car-card";
-import { getCarById, listInventory, formatPKR, formatMileage, type Car } from "../../data/cars";
+import { getCarById, listInventory, MASTER_SHOWROOM_ID, formatPKR, formatMileage, type Car } from "../../data/cars";
 import { LoadError } from "../states";
 import { whatsappLink, carViewingMessage, similarCarMessage, reservedCarMessage } from "../../../config/contact";
 import { useDocumentTitle } from "../../hooks/use-document-title";
@@ -278,7 +278,7 @@ export function CarDetail() {
     getCarById(id)
       .then((c) => { if (alive) { clearTimeout(timer); setCar(c); } })
       .catch(() => { if (alive) { clearTimeout(timer); setError(true); } });
-    listInventory()
+    listInventory({ showroomId: MASTER_SHOWROOM_ID })
       .then((list) => { if (alive) setAll(list); })
       .catch(() => {});
     return () => { alive = false; clearTimeout(timer); };
