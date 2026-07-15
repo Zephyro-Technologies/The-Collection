@@ -37,8 +37,18 @@
   --signal-good: #4F7A55;    /* 4.94:1 on white */
   --signal-calm: #8A8A8A;    /* neutral, was warm #928B7D */
 
-  /* Semantic (shadcn) layer — every one maps onto a brand token. */
-  --background: var(--alabaster);   /* #F4F2ED page */
+  /* ---- cooler light neutrals (DASHBOARD-ONLY) ---------------------------
+   * The accent is cool silver, so the brand's WARM off-whites read goldish on
+   * this light UI. The dashboard's page, chips and muted surfaces use these
+   * cooler, near-neutral versions instead of --alabaster / --platinum-soft.
+   * NOT changed in the shared file: the dark website uses --alabaster for its
+   * HEADING TEXT and must keep the warm value — so this cools the dashboard
+   * only. The card stays pure white and the steel accent is unchanged. */
+  --page-neutral:  #F5F5F4;   /* cool neutral page   (brand --alabaster is #F4F2ED) */
+  --muted-neutral: #ECECEB;   /* cool neutral muted  (brand --platinum-soft is #EDECEA) */
+
+  /* Semantic (shadcn) layer — every one maps onto a brand or neutral token. */
+  --background: var(--page-neutral);   /* cool neutral page (was --alabaster) */
   --foreground: var(--noir);        /* #0A0A0A ink — 19.8:1 on white */
   --card: var(--white);
   --card-foreground: var(--noir);
@@ -46,9 +56,9 @@
   --popover-foreground: var(--noir);
   --primary: var(--noir);
   --primary-foreground: var(--cream);
-  --secondary: var(--platinum-soft);
+  --secondary: var(--muted-neutral);   /* was --platinum-soft */
   --secondary-foreground: var(--noir);
-  --muted: var(--platinum-soft);
+  --muted: var(--muted-neutral);       /* was --platinum-soft */
   --muted-foreground: var(--ink-40);
   /* --accent is defined in the accent block above (steel). */
   --accent-foreground: var(--noir);
@@ -59,7 +69,7 @@
   --shadow-card: 0 1px 2px 0 color-mix(in srgb, var(--noir) 5%, transparent);
   --input: color-mix(in srgb, var(--noir) 12%, transparent);
   --input-background: #FAFAF9;
-  --switch-background: #D6D6D4;
+  --switch-background: #D6D6D5;   /* neutral (was faint-warm #D6D6D4) */
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   --ring: var(--accent);
@@ -119,14 +129,18 @@
   --color-noir-700: var(--noir-700);
   --color-noir-600: var(--noir-600);
   --color-card-border: var(--card-border);
-  --color-alabaster: var(--alabaster);
+  /* bg-alabaster / bg-platinum-soft are the dashboard's light page + muted
+     surface utilities — retargeted to the cooler neutrals above (dashboard-only;
+     the raw --alabaster / --platinum-soft brand tokens keep their warm values,
+     which the dark website still relies on). */
+  --color-alabaster: var(--page-neutral);
   --color-cream: var(--cream);
   --color-accent-soft: var(--accent-soft);
   --color-accent-on-dark: var(--accent-on-dark);
   --color-steel: var(--steel);
   --color-platinum: var(--platinum);
   --color-platinum-dim: var(--platinum-dim);
-  --color-platinum-soft: var(--platinum-soft);
+  --color-platinum-soft: var(--muted-neutral);
   --color-onyx: var(--onyx);
   --color-ink-60: var(--ink-60);
   --color-ink-40: var(--ink-40);
