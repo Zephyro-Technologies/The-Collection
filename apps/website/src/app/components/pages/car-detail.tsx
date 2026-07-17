@@ -72,16 +72,20 @@ function Gallery({ car }: { car: Car }) {
 
   return (
     <>
-      <div className="flex flex-col gap-4 lg:flex-row">
-        {/* Thumbnails — horizontal on mobile, vertical rail on desktop */}
+      {/* min-w-0 again here so the rail's intrinsic width can never leak back out
+          through this flex row if the layout above it changes. */}
+      <div className="flex min-w-0 flex-col gap-4 lg:flex-row">
+        {/* Thumbnails — horizontal on mobile, vertical rail on desktop.
+            snap-x: on a phone this is a horizontal flick-rail, so let it land on a
+            thumb. Inert at lg, where it becomes the vertical rail. */}
         {n > 1 && (
-          <div className="order-2 flex gap-3 overflow-x-auto pb-1 lg:order-1 lg:max-h-[560px] lg:w-[88px] lg:flex-col lg:overflow-y-auto lg:overflow-x-hidden lg:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="order-2 flex snap-x gap-3 overflow-x-auto pb-1 lg:order-1 lg:max-h-[560px] lg:w-[88px] lg:snap-none lg:flex-col lg:overflow-y-auto lg:overflow-x-hidden lg:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {photos.map((photo, i) => (
               <button
                 key={photo + i}
                 ref={(el) => { thumbRefs.current[i] = el; }}
                 onClick={() => jump(i)}
-                className="relative aspect-[4/3] w-24 shrink-0 overflow-hidden rounded-[2px] outline-none transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-page)] lg:w-full"
+                className="relative aspect-[4/3] w-24 shrink-0 snap-start overflow-hidden rounded-[2px] outline-none transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-page)] lg:w-full"
                 style={thumbStyle(i === active)}
                 aria-label={`View photograph ${i + 1}`}
                 aria-current={i === active}
@@ -218,18 +222,29 @@ function Gallery({ car }: { car: Car }) {
             </div>
 
             {n > 1 && (
-              <div className="flex justify-center gap-3 px-6 py-6" onClick={(e) => e.stopPropagation()}>
-                {photos.map((photo, i) => (
-                  <button
-                    key={photo + i}
-                    onClick={() => jump(i)}
-                    className="relative aspect-[4/3] w-16 shrink-0 overflow-hidden rounded-[2px] outline-none transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-page)] sm:w-20"
-                    style={thumbStyle(i === active)}
-                    aria-label={`View photograph ${i + 1}`}
-                  >
-                    <ImageWithFallback src={photo} alt="" className="h-full w-full object-cover" />
-                  </button>
-                ))}
+              // The strip must SCROLL on a phone. It was `flex justify-center` with no
+              // overflow handling: 12 thumbs (~645px) centred in a 390px viewport spill
+              // off BOTH edges, and centred overflow cannot be scrolled to — 8 of 12
+              // thumbs were unreachable. The scroller lives on the outer div; the inner
+              // `w-max mx-auto` centres the strip when it fits and starts at 0 (fully
+              // scrollable) when it doesn't.
+              <div
+                className="snap-x overflow-x-auto px-6 py-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="mx-auto flex w-max gap-3">
+                  {photos.map((photo, i) => (
+                    <button
+                      key={photo + i}
+                      onClick={() => jump(i)}
+                      className="relative aspect-[4/3] w-16 shrink-0 snap-start overflow-hidden rounded-[2px] outline-none transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-page)] sm:w-20"
+                      style={thumbStyle(i === active)}
+                      aria-label={`View photograph ${i + 1}`}
+                    >
+                      <ImageWithFallback src={photo} alt="" className="h-full w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </motion.div>
@@ -358,18 +373,27 @@ export function CarDetail() {
       <section className="mx-auto max-w-[1320px] px-6 pt-28 lg:px-10 lg:pt-32">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-[0.7rem] uppercase tracking-[0.14em] text-[var(--text-muted)]">
-          <Link to="/collection" className="transition-colors hover:text-[var(--text-primary)]">The Collection</Link>
+          {/* py/-my: a 17px-tall link is a poor thumb target. This lifts the hit area
+              to ~45px without moving the breadcrumb a pixel. */}
+          <Link to="/collection" className="-my-3.5 py-3.5 transition-colors hover:text-[var(--text-primary)]">The Collection</Link>
           <span className="text-[var(--accent)]">/</span>
           <span className="text-[var(--text-body)]">{car.make} {car.model}</span>
         </nav>
 
+        {/* min-w-0 on both grid items is load-bearing, not decoration: a grid item
+            defaults to min-width:auto, so it can't shrink below its content's
+            min-content width. Below lg the gallery's thumbnail rail is a HORIZONTAL
+            row of ~12 x 96px thumbs (min-content ~1284px), which forced the item —
+            and the whole page — to 1284px on every phone/tablet, and stopped the
+            rail's own overflow-x-auto from ever engaging. At lg+ the rail flips to a
+            vertical 88px column, which is why desktop never showed it. */}
         <div className="mt-6 grid gap-10 lg:grid-cols-[1.55fr_1fr] lg:gap-14 xl:gap-20">
-          <Reveal>
+          <Reveal className="min-w-0">
             <Gallery car={car} />
           </Reveal>
 
           {/* Essentials */}
-          <Reveal delay={0.05}>
+          <Reveal delay={0.05} className="min-w-0">
             <div className="lg:sticky lg:top-28 lg:self-start">
               <StatusPill status={car.status} />
               <div className="mt-6 text-[0.72rem] uppercase tracking-[0.16em] text-[var(--text-muted)]">
