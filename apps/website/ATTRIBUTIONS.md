@@ -8,12 +8,15 @@ This Figma Make file includes photos from [Unsplash](https://unsplash.com) used 
 licensed photography of the collection before launch, and delete this section's
 rows as you go.
 
+The **hero is done**: `hero.webp` is the client's own photograph of the collection,
+so it is not listed below and needs no attribution. It also retired `hero.jpg`, the
+one asset whose photographer was never recorded.
+
 All photos are downloaded and **self-hosted** in `src/assets/` — none are
 hot-linked — and are used under the [Unsplash licence](https://unsplash.com/license).
 
 | Asset | Used by | Photographer | Source |
 | --- | --- | --- | --- |
-| `hero.jpg` | Landing hero | *not recorded* | Unsplash (predates the attribution table; re-source or replace before launch) |
 | `statement.jpg` | "Shown to a single owner at a time." band | *not recorded* | Unsplash (as above) |
 | `ethos.jpg` | 01 · How we work — the detail bleeding in at the right edge | Nischal Kanishk | https://unsplash.com/photos/TQT8Qu4UvS8 |
 | `featured.jpg` | 02 · Currently available — the showroom behind the card plate | Mehdi El marouazi | https://unsplash.com/photos/JRsiRBRBfEw |

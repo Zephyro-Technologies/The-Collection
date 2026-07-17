@@ -9,7 +9,7 @@ import { Reveal } from "../reveal";
 import { Marquee } from "../marquee";
 import { useInventory } from "../../data/use-inventory";
 import { CollectionSkeleton } from "../states";
-import heroImg from "../../../assets/hero.jpg";
+import heroImg from "../../../assets/hero.webp";
 import statementImg from "../../../assets/statement.jpg";
 import processImg from "../../../assets/process.jpg";
 import houseImg from "../../../assets/house.jpg";
@@ -17,9 +17,13 @@ import ethosImg from "../../../assets/ethos.jpg";
 import featuredImg from "../../../assets/featured.jpg";
 import { useDocumentTitle } from "../../hooks/use-document-title";
 
-// TODO (client content): these are self-hosted placeholder stock photos (Unsplash,
-// see ATTRIBUTIONS.md). Replace with real, licensed photography of the collection
-// before launch.
+// TODO (client content): the images below are self-hosted placeholder stock photos
+// (Unsplash, see ATTRIBUTIONS.md). Replace with real, licensed photography of the
+// collection before launch. The hero is DONE — see below.
+//
+// The hero is the client's OWN photograph of the collection, so it is neither a
+// placeholder nor Unsplash, and carries no attribution. It also retired the one
+// asset whose attribution was never recorded.
 const HERO_IMG = heroImg;
 const STATEMENT_IMG = statementImg;
 const PROCESS_IMG = processImg;     // a wheel in shadow — a detail, not a hero shot
@@ -501,27 +505,36 @@ export function Landing() {
         >
           <ImageWithFallback
             src={HERO_IMG}
-            alt="A single motorcar, quietly lit"
+            alt="The Collection's showroom in Islamabad, a room of motorcars under low light"
             className="h-full w-full object-cover"
           />
-          {/* The scrim. The photograph is a black car against a PALE sky and a light
-              road, so a flat vertical wash either left the centre at ~2.9:1 (it did)
-              or flattened the whole frame to tar. Two layers instead:
+          {/* The scrim. The photograph is a dark room holding bright objects — white
+              G-Wagons, an orange GT-R, lit ceiling panels — so a flat vertical wash
+              either leaves the copy on a white flank or flattens the room to tar.
+              Two layers instead:
 
               1. an elliptical pool of onyx sitting exactly under the text column —
                  deep at the centre, gone by the frame's edge;
               2. a light vertical wash: enough at the top for the header, enough at
                  the foot for the scroll cue, almost nothing across the middle.
 
-              Where they overlap (behind the copy) they compound to ~78% onyx, which
-              puts cream at ~10:1 over the brightest part of the sky. At the edges the
-              road, the wheels and the taillight keep their contrast — the car reads
-              as a silhouette rather than a black rectangle. */}
+              vmax, not %, on the pool's horizontal radius. A percentage resolves
+              against the BOX WIDTH, so on a phone the pool collapsed to ~273px while
+              the copy does NOT shrink with it (it goes near full-bleed) — the
+              paragraph ended up out on the pool's weak rim, measured 3.11:1 across
+              the white G-Wagons. vmax resolves against the LARGER viewport axis, so
+              in any landscape window 70vmax IS 70% of the width and desktop is
+              untouched (measured 6.14:1 either way, to the pixel); in portrait it
+              picks up the tall axis, the pool widens to cover the copy, and the
+              paragraph goes to 6.08:1. Costs 3 points of frame luminance.
+              (max(70%, 600px) is the obvious move and is INVALID here — the parser
+              rejects a math function in the gradient's size slot and drops the whole
+              declaration, silently leaving no scrim at all.) */}
           <div
             className="absolute inset-0"
             style={{
               background: [
-                "radial-gradient(ellipse 70% 58% at 50% 46%, color-mix(in srgb, var(--onyx) 72%, transparent) 0%, color-mix(in srgb, var(--onyx) 58%, transparent) 45%, color-mix(in srgb, var(--onyx) 20%, transparent) 78%, transparent 100%)",
+                "radial-gradient(ellipse 70vmax 58% at 50% 46%, color-mix(in srgb, var(--onyx) 72%, transparent) 0%, color-mix(in srgb, var(--onyx) 58%, transparent) 45%, color-mix(in srgb, var(--onyx) 20%, transparent) 78%, transparent 100%)",
                 "linear-gradient(to bottom, color-mix(in srgb, var(--onyx) 55%, transparent) 0%, color-mix(in srgb, var(--onyx) 18%, transparent) 32%, color-mix(in srgb, var(--onyx) 22%, transparent) 62%, color-mix(in srgb, var(--onyx) 78%, transparent) 100%)",
               ].join(", "),
             }}
