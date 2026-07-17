@@ -1,5 +1,5 @@
-import logoLightUrl from "../../assets/the-collection-logo.svg";
-import logoDarkUrl from "../../assets/the-collection-logo-dark.svg";
+import logoLightUrl from "../../assets/the-collection-logo.webp";
+import logoDarkUrl from "../../assets/the-collection-logo-dark.webp";
 
 type WordmarkSize = "hero" | "panel" | "mini" | "foot";
 type WordmarkTone = "light" | "dark";
@@ -12,8 +12,15 @@ type WordmarkTone = "light" | "dark";
 // footer, drawer, over-hero header); "dark" = black artwork, for light surfaces.
 // The site is now fully dark, so "light" is used nearly everywhere — the scrolled
 // header is the one place the tone flips.
-// VECTOR: the client supplied only PNG, so the lockup was traced (potrace) from
-// their artwork into SVG — crisp at every size. viewBox 954x565 (1.69:1).
+//
+// RASTER, deliberately: this is the client's own artwork (brand/the-collection-logo-original.webp),
+// trimmed to its ink and re-tinted per tone. It replaced a potrace TRACE of a
+// low-res PNG, which had dilated the copperplate hairlines into uniform slabs.
+// Tracing again would reintroduce exactly that: the hairlines are ~1px at source
+// width, and no autotracer keeps them. 1081x637 of ink (1.69:1) against a 116px
+// largest render (the hero clamp) leaves ~1.8x headroom at DPR 3, so the raster
+// never limits us. Set a HEIGHT and let the width follow.
+// A true vector needs the client's original AI/EPS/PDF — not another trace.
 const HEIGHTS: Record<WordmarkSize, string> = {
   hero: "clamp(4.5rem, 11vw, 7.25rem)",
   panel: "3.6rem",
