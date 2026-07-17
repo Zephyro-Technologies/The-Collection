@@ -17,7 +17,7 @@ interface WordmarkProps {
 // RASTER, deliberately: this is the client's own artwork (brand/the-collection-logo-original.webp),
 // trimmed to its ink and re-tinted per variant. It replaced a potrace TRACE of a
 // low-res PNG, which had dilated the copperplate hairlines into uniform slabs.
-// Tracing again would reintroduce exactly that. 1081x637 of ink (1.69:1) against a
+// Tracing again would reintroduce exactly that. 1081x637 of ink (1.70:1) against a
 // 70px largest render (lg) leaves ample headroom at DPR 3.
 // Set a HEIGHT and let the width follow.
 const HEIGHTS: Record<NonNullable<WordmarkProps["size"]>, number> = {

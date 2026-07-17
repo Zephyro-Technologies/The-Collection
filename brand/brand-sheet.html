@@ -180,10 +180,10 @@
   <hr class="rule" />
 
   <section>
-    <div class="eyebrow">06 — Wordmark usage</div>
+    <div class="eyebrow">06 — Wordmark &amp; mark</div>
     <h2>One lockup, two inks.</h2>
     <p>The script "The" over a condensed Didone "COLLECTION". It is <strong>monochrome</strong>: white artwork on dark
-      surfaces, black artwork on light ones. The lockup is 1.69:1 — set a height and let the width follow. Give it
+      surfaces, black artwork on light ones. The lockup is 1.70:1 — set a height and let the width follow. Give it
       clear space of at least the cap-height of "COLLECTION" on every side.</p>
     <div class="grid2">
       <div style="background:var(--noir);border:1px solid rgba(139,141,144,.25);border-radius:8px;padding:32px;display:flex;justify-content:center">
@@ -196,11 +196,42 @@
     <div class="grid2">
       <div class="do"><b>Do</b><p>White lockup on noir or graphite. Black lockup on alabaster or white.</p></div>
       <div class="dont"><b>Never</b><p>Never recolour it, never reintroduce a gold "COLLECTION", never stretch it — the
-        aspect is fixed at 1.69:1.</p></div>
+        aspect is fixed at 1.70:1.</p></div>
     </div>
+
+    <div class="eyebrow" style="margin-top:6px">The artwork</div>
+    <p>Both inks are cut from the client's own file — <span style="font-family:var(--mono);font-size:.82em">the-collection-logo-original.webp</span>
+      — trimmed to its ink and re-tinted. Nothing is redrawn: the shape is theirs to the pixel. The lockup was once
+      <strong>autotraced</strong> from a low-resolution PNG, and the trace fattened the copperplate hairlines into
+      uniform slabs and flattened the Didone contrast. That artwork is gone.</p>
+    <div class="grid2">
+      <div class="do"><b>Do</b><p>Cut new sizes and inks from the original file. It is raster, and at 1081×637 of ink it
+        outresolves every place either app renders it.</p></div>
+      <div class="dont"><b>Never</b><p>Never autotrace the artwork. The script's hairlines are about a pixel wide at
+        source size — no tracer survives them, and that is precisely what produced the lockup this replaced.</p></div>
+    </div>
+
+    <div class="eyebrow" style="margin-top:6px">The mark</div>
+    <p>A 1.70:1 wordmark is illegible at favicon size, so the mark is the Didone <strong>"C"</strong> of COLLECTION,
+      cut from the same original and set at 80% of the icon box. Cream on noir, square, no rounding — the platform
+      applies its own. It is the favicon and the apple-touch icon on both apps.</p>
+    <!-- On a light field, not noir: the mark's own ground IS noir, so on this page
+         the square would vanish and the "C" would look like it floats. This is also
+         how the favicon actually sits in light browser chrome. -->
+    <div class="light" style="display:flex;gap:26px;align-items:flex-end;padding:22px 26px">
+      <div><img src="the-collection-mark.svg" alt="The Collection mark, 64px" style="width:64px;height:64px;display:block" />
+        <div class="kicker" style="margin-top:8px;font-size:.58rem;color:var(--ink-40)">64</div></div>
+      <div><img src="the-collection-mark.svg" alt="The Collection mark, 32px" style="width:32px;height:32px;display:block" />
+        <div class="kicker" style="margin-top:8px;font-size:.58rem;color:var(--ink-40)">32</div></div>
+      <div><img src="the-collection-mark.svg" alt="The Collection mark, 16px" style="width:16px;height:16px;display:block" />
+        <div class="kicker" style="margin-top:8px;font-size:.58rem;color:var(--ink-40)">16</div></div>
+    </div>
+
     <p style="font-size:.84rem;color:var(--platinum-dim)">
-      <strong>Outstanding from the client:</strong> a vector (SVG) and a <strong>square mark</strong>. A 1.69:1 wordmark
-      is not legible at favicon size; the current favicon is an interim crop of the Didone "C" from the lockup.</p>
+      <strong>Outstanding from the client:</strong> a true vector — <strong>AI, EPS or PDF</strong> — and a
+      purpose-drawn <strong>square mark</strong>. The lockup and the "C" are both raster cut from the client's
+      original, which is sufficient everywhere either is rendered today. A vector has to come from the client's own
+      source file. It cannot be recovered by tracing the raster: that is what produced the artwork this replaced.</p>
   </section>
 
   <hr class="rule" />

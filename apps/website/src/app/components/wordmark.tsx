@@ -17,7 +17,7 @@ type WordmarkTone = "light" | "dark";
 // trimmed to its ink and re-tinted per tone. It replaced a potrace TRACE of a
 // low-res PNG, which had dilated the copperplate hairlines into uniform slabs.
 // Tracing again would reintroduce exactly that: the hairlines are ~1px at source
-// width, and no autotracer keeps them. 1081x637 of ink (1.69:1) against a 116px
+// width, and no autotracer keeps them. 1081x637 of ink (1.70:1) against a 116px
 // largest render (the hero clamp) leaves ~1.8x headroom at DPR 3, so the raster
 // never limits us. Set a HEIGHT and let the width follow.
 // A true vector needs the client's original AI/EPS/PDF — not another trace.
