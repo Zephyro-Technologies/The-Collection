@@ -38,7 +38,31 @@ export function SiteHeader() {
           borderBottom: solid ? "1px solid var(--border)" : "1px solid transparent",
         }}
       >
-        <div className="mx-auto flex max-w-[1240px] items-center justify-between px-6 py-4 lg:px-10">
+        {/* Header-local scrim. The wordmark is white and always white over the hero,
+            so its legibility is entirely a function of what the photo puts behind it.
+            The new hero has lit ceiling lamps in the top corners — exactly where the
+            mark and ENQUIRE sit — and on a short (landscape) window the object-cover
+            crop drops those lamps right under the header (measured: the mark landed
+            on a lamp at ~0.85 luminance). The shared hero scrim can't fix this: its
+            onyx pool is centred under the middle column and its vertical wash is
+            weakest at the very top corners, and darkening either enough to cover the
+            header would tar the whole top of the photo.
+
+            A scrim that BELONGS to the header is independent of the photograph and of
+            the crop, and it is a thin strip at the frame's top edge — well above the
+            centrepiece wordmark (~40% down) — so it costs nothing compositionally.
+            Only while the header rests transparent over the hero; once it goes solid
+            on scroll it has its own background and this fades out to avoid doubling. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-32 transition-opacity duration-500"
+          style={{
+            opacity: overHero ? 1 : 0,
+            background:
+              "linear-gradient(to bottom, color-mix(in srgb, var(--onyx) 85%, transparent) 0%, color-mix(in srgb, var(--onyx) 55%, transparent) 45%, transparent 100%)",
+          }}
+        />
+        <div className="relative mx-auto flex max-w-[1240px] items-center justify-between px-6 py-4 lg:px-10">
           <Link to="/" aria-label="The Collection — home" className="shrink-0">
             <Wordmark size="mini" tone="light" />
           </Link>
