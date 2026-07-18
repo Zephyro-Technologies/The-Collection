@@ -1,5 +1,10 @@
 {
   "name": "the-collection",
   "version": "0.0.0",
-  "private": true
+  "private": true,
+  "optionalDependencies": {
+    "@rollup/rollup-win32-x64-msvc": "4.62.2",
+    "@tailwindcss/oxide-win32-x64-msvc": "4.1.12",
+    "lightningcss-win32-x64-msvc": "1.30.1"
+  }
 }
