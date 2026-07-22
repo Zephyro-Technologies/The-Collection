@@ -338,15 +338,17 @@ curl -s https://admin.thecollectionisb.pk/ | grep -q "Operator dashboard" \
 ```
 
 Confirm `robots.txt`'s `Sitemap:` line and the four `<loc>` entries in `sitemap.xml` still match the
-live domain. Leave **both stacks live at least 48 hours**. Then in Vercel: remove the custom domains
-from the projects *first*, then delete the projects. Only then commit the deletion of
-`apps/website/vercel.json` and `apps/dashboard/vercel.json`, and drop `.vercel/` from `.gitignore`.
+live domain.
 
-> While Vercel remains the rollback target, do **not** add a `packageManager` field to the root
-> `package.json`. Vercel reads it and switches to Corepack resolution; pnpm 11 is outside what Vercel's
-> image ships, which would break the build of the very commit you'd roll back to. Note also that Vercel
-> keeps auto-deploying every `master` push during this window — check those builds still go green, not
-> merely that the `*.vercel.app` URL still serves (it serves the last *successful* build).
+**Done.** Vercel was decommissioned once the Cloudflare deployment was verified live on both domains
+(2026-07-23): the domains were removed from the Vercel projects, the projects deleted, and the two
+`vercel.json` files plus the `.vercel/` ignore entry removed from the repo. Cloudflare Workers is now
+the sole host; the sections above are retained as the record of how the cutover was performed.
+
+> Now that Vercel is gone, adding a `packageManager` field (`"pnpm@11.0.8"`) to the root
+> `package.json` is safe — it was withheld only because Vercel read it and would have switched to a
+> Corepack pnpm version its build image did not ship, breaking the rollback target. It is optional:
+> `pnpm/action-setup` in CI and the local toolchain are already pinned without it.
 
 ### 12. Harden the dashboard
 
@@ -359,11 +361,13 @@ from the projects *first*, then delete the projects. Only then commit the deleti
 
 ## Rollback
 
-- **Bad deploy, DNS already moved:** `npx wrangler@4.113.0 rollback --message "reason"` from the app
-  directory, or re-run the workflow via **Actions → Deploy to Cloudflare Workers → Run workflow**,
-  choosing a single app.
-- **Something worse:** point DNS back at Vercel. This is why TTLs go to 60s in step 6 and why the
-  Vercel projects stay alive for 48 hours.
+Vercel is gone, so every rollback path is now within Cloudflare:
+
+- **Bad deploy:** `npx wrangler@4.113.0 rollback --message "reason"` from the app directory (`cd
+  apps/<app>`), which reverts that Worker to its previous version, or roll back from the dashboard:
+  Workers & Pages → the Worker → Deployments → an earlier version → **Rollback**.
+- **Bad commit:** revert it on `master` and let Cloudflare Workers Builds redeploy, or run the manual
+  fallback workflow (**Actions → Deploy to Cloudflare Workers → Run workflow**) for a single app.
 - **Removing a Custom Domain does not delete its certificate.** Clean it up manually in SSL/TLS → Edge
   Certificates.
 

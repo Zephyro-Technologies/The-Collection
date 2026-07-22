@@ -8,11 +8,6 @@ dist/
 # Cloudflare Wrangler local state / cache (never commit)
 .wrangler/
 
-# Vercel CLI local link/state (never commit).
-# Kept while the Vercel deployment is still the rollback target; remove this
-# together with the two vercel.json files at decommission.
-.vercel/
-
 # Environment — never commit real keys
 .env
 .env.*
