@@ -1,0 +1,97 @@
+{
+  // Cloudflare Workers Static Assets — public marketing site (@collection/website).
+  // Replaces apps/website/vercel.json.
+  //
+  // This is an ASSETS-ONLY Worker: there is deliberately no "main" key and no
+  // Worker script. Every response is therefore a static-asset response, which
+  // (a) makes _headers rules always apply and (b) means requests are free and
+  // unmetered and never consume the Workers Free plan's invocation allowance.
+
+  "name": "collection-website",
+
+  // A settled date in the past, NOT the authoring date. A compatibility_date
+  // ahead of what the pinned wrangler/workerd supports emits a warning on every
+  // deploy, and one ahead of the API's accepted range is rejected outright.
+  // Behaviourally irrelevant for an assets-only Worker with no "main".
+  "compatibility_date": "2026-07-01",
+
+  "assets": {
+    // Vite's default output directory — vite.config.ts overrides neither
+    // build.outDir nor base. Resolved RELATIVE TO THIS FILE, so `wrangler deploy`
+    // must run with apps/website as its working directory (the GitHub Actions
+    // workflow sets working-directory for exactly this reason).
+    "directory": "./dist",
+
+    // Exact equivalent of the old Vercel rewrite:
+    //   { "source": "/(.*)", "destination": "/index.html" }
+    // A request that matches no real file in dist/ is served the contents of
+    // /index.html with HTTP 200 OK. It is a rewrite, not a redirect, and not a
+    // 404. This is what keeps react-router's /, /collection, /collection/:id,
+    // /privacy, /terms and the * catch-all working on hard refresh and on
+    // direct entry from a search result.
+    //
+    // Crucially this is a FALLBACK, not a blanket redirect: real files still
+    // win, because asset matching runs first. So /assets/index-<hash>.js,
+    // /robots.txt, /sitemap.xml, /og-image.jpg and the favicons serve their own
+    // bytes. Do NOT try to do this with a `_redirects` rule instead —
+    // Cloudflare documents that "Redirects are always followed, regardless of
+    // whether or not an asset matches the incoming request", and _redirects has
+    // no negation syntax, so a `/*` catch-all there would shadow every one of
+    // those files.
+    //
+    // The default value is "none", which would 404 every deep link.
+    "not_found_handling": "single-page-application"
+
+    // html_handling is left at its default, "auto-trailing-slash". Benign here:
+    // the build emits a single dist/index.html and no per-route folders, so all
+    // app routes fall straight through to not_found_handling.
+  },
+
+  // Keep the *.workers.dev hostname available through cutover so the deploy can
+  // be verified end to end before DNS is flipped. public/_headers carries a
+  // noindex rule scoped to that hostname so it cannot compete with the real
+  // domain in search results — unlike Cloudflare Pages preview deployments,
+  // Workers hostnames get no automatic noindex.
+  //
+  // Both flags are set explicitly because preview_urls DEFAULTS TO THE VALUE OF
+  // workers_dev; setting it is the only way to decouple the two.
+  "workers_dev": true,
+  "preview_urls": false
+
+  // ---------------------------------------------------------------------------
+  // CUTOVER STEP — uncomment ONLY after the relevant zone is ACTIVE in Cloudflare
+  // (nameservers moved). Committing a route for a non-active zone fails the
+  // deploy and blocks verification on workers.dev. The two zones go Active
+  // independently, so it is fine to uncomment the .com.pk pair first and add the
+  // .pk pair later.
+  //
+  // THIS SITE IS SERVED ON BOTH DOMAINS. All four hostnames return identical
+  // content from this one Worker; thecollectionisb.com.pk is the CANONICAL
+  // origin. Duplicate content is neutralised two ways, which must stay in sync:
+  //   1. src/app/hooks/use-canonical.ts injects <link rel="canonical"> per route,
+  //      always on .com.pk, on whichever domain the visitor arrived at.
+  //   2. public/_headers sends `Link: <...>; rel="canonical"` on the .pk
+  //      hostnames, for crawlers that never run JavaScript.
+  // sitemap.xml lists .com.pk URLs only — do not add .pk entries.
+  //
+  // The deploying API token needs Zone → DNS → Edit and Zone → Zone → Read on
+  // this zone, in addition to Account → Workers Scripts → Edit. The stock
+  // "Edit Cloudflare Workers" template does NOT clearly grant DNS:Edit, and
+  // attaching a Custom Domain makes Cloudflare create a DNS record — so a
+  // token minted for the workers.dev-only phase will 403 here. Re-issue it
+  // AFTER the zone exists (zone scoping is fixed at token creation time).
+  //
+  // Let Cloudflare create the DNS record and issue the certificate. Never
+  // hand-create the CNAME first: a Custom Domain cannot attach to a hostname
+  // that already has a CNAME record.
+  //
+  // Custom Domains match the EXACT hostname — no wildcards — so the apex and
+  // www are two separate entries.
+  //
+  // ,"routes": [
+  //   { "pattern": "thecollectionisb.com.pk",     "custom_domain": true },
+  //   { "pattern": "www.thecollectionisb.com.pk", "custom_domain": true },
+  //   { "pattern": "thecollectionisb.pk",         "custom_domain": true },
+  //   { "pattern": "www.thecollectionisb.pk",     "custom_domain": true }
+  // ]
+}

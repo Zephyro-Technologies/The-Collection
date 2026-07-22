@@ -1,0 +1,46 @@
+# apps/dashboard/public/_headers
+#
+# Parity replacement for the `headers` block of apps/dashboard/vercel.json.
+# Vercel's regex source "/(.*)" becomes Cloudflare's splat "/*".
+#
+# PLACEMENT IS LOAD-BEARING: Cloudflare parses this file only when it sits
+# INSIDE assets.directory. Vite copies public/ verbatim into dist/, and dist/ is
+# assets.directory in wrangler.jsonc — so this lands at dist/_headers, which is
+# where Cloudflare looks. A _headers file at the repo root, or beside
+# wrangler.jsonc, is silently ignored. The CI workflow asserts dist/_headers
+# exists on every build for exactly this reason.
+#
+# Syntax: a URL pattern on its own line, then indented `Name: value` lines.
+# Rules ACCUMULATE — a request matching several patterns inherits all of their
+# headers. Limits: 100 rules per file, 2,000 characters per line, one splat per
+# pattern. This file uses 3 rules.
+
+# Layer 3 of the never-index guarantee (layer 1 = robots.txt Disallow in this
+# same directory, layer 2 = <meta name="robots"> in index.html). Applies to
+# every request URL on every hostname this Worker answers on — the custom domain
+# and the *.workers.dev hostname alike. Unlike Cloudflare Pages preview
+# deployments, Workers hostnames get NO automatic noindex, so this rule is the
+# whole story at the header layer.
+#
+# If this file is lost the failure is SILENT: nothing breaks, the private
+# dashboard just quietly becomes indexable via any link that leaks.
+/*
+  X-Robots-Tag: noindex, nofollow
+
+# Vite content-hashes every filename it emits into dist/assets/, so those files
+# can be cached forever. Cloudflare does NOT infer this — its default for every
+# static asset is `Cache-Control: public, max-age=0, must-revalidate` plus an
+# ETag, meaning a revalidation round-trip for every JS/CSS/font chunk on every
+# load. Vercel applied immutable caching to hashed output automatically; this
+# restores that behaviour.
+#
+# Deliberately NOT applied to /index.html, which must keep revalidating or users
+# would be stranded on a stale bundle after every deploy. Cloudflare's default
+# is already correct there, so index.html needs no rule at all.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The favicons are copied from public/ unhashed, so they cannot be immutable —
+# a new favicon would never reach anyone. One day, revalidated after that.
+/*.png
+  Cache-Control: public, max-age=86400

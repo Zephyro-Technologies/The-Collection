@@ -1,5 +1,5 @@
 # The Collection — internal operator dashboard. Never index.
 # Reinforced by <meta name="robots" content="noindex, nofollow"> in index.html
-# and an X-Robots-Tag: noindex response header in vercel.json.
+# and an X-Robots-Tag: noindex, nofollow response header from public/_headers.
 User-agent: *
 Disallow: /

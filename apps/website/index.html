@@ -13,17 +13,28 @@
       <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
       <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-      <!-- TODO (deploy): set the real production domain as absolute URLs on og:url / og:image / a canonical link. -->
+      <!-- Absolute URLs on the CANONICAL origin. The site is served on both
+           thecollectionisb.com.pk and thecollectionisb.pk, and most social
+           scrapers do not run JavaScript — so these must be absolute, or a share
+           from the .pk copy would advertise .pk. src/app/hooks/use-canonical.ts
+           rewrites og:url per route at runtime for clients that do render.
+
+           There is deliberately no canonical link element here: this is a
+           client-rendered SPA where one index.html serves every route, so a
+           static canonical would point every route at the same URL. It is
+           injected per-route by use-canonical.ts instead. Do not add one.
+           (Written without the literal tag so that regex-based scrapers and
+           greps cannot mistake this comment for a real canonical.) -->
       <meta property="og:type" content="website" />
       <meta property="og:site_name" content="The Collection" />
       <meta property="og:title" content="The Collection · Private Luxury Motorcars, Islamabad" />
       <meta property="og:description" content="A private, by-appointment dealership for high-value motorcars in Islamabad. Acquired, never simply bought." />
-      <meta property="og:image" content="/og-image.jpg" />
-      <meta property="og:url" content="/" />
+      <meta property="og:image" content="https://thecollectionisb.com.pk/og-image.jpg" />
+      <meta property="og:url" content="https://thecollectionisb.com.pk/" />
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="The Collection · Private Luxury Motorcars, Islamabad" />
       <meta name="twitter:description" content="A private, by-appointment dealership for high-value motorcars in Islamabad." />
-      <meta name="twitter:image" content="/og-image.jpg" />
+      <meta name="twitter:image" content="https://thecollectionisb.com.pk/og-image.jpg" />
 
       <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
       

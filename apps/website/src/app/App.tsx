@@ -6,6 +6,7 @@ import {
   Outlet,
   useLocation,
 } from "react-router";
+import { useCanonical } from "./hooks/use-canonical";
 import { SiteHeader } from "./components/site-header";
 import { SiteFooter } from "./components/site-footer";
 import { Landing } from "./components/pages/landing";
@@ -23,6 +24,11 @@ function ScrollToTop() {
 }
 
 function Layout() {
+  // The site answers on both thecollectionisb.com.pk and thecollectionisb.pk;
+  // this pins every route's canonical URL to the .com.pk origin. Here rather
+  // than in each page so new routes are covered automatically.
+  useCanonical();
+
   return (
     <div className="flex min-h-screen flex-col bg-[var(--surface-page)] text-[var(--text-primary)]">
       <ScrollToTop />

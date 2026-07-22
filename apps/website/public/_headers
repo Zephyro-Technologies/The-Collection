@@ -1,0 +1,68 @@
+# apps/website/public/_headers
+#
+# The public marketing site had no headers block in vercel.json, so this file is
+# additive rather than parity. Vite copies public/ verbatim into dist/, which is
+# assets.directory in wrangler.jsonc — a _headers file anywhere else is silently
+# ignored.
+#
+# DELIBERATELY ABSENT, each for a reason:
+#   * Any blanket X-Robots-Tag. The site MUST stay indexable on its real domain.
+#   * X-Frame-Options / Cross-Origin-Resource-Policy / Cross-Origin-Embedder-Policy.
+#     These can stop social and link-preview crawlers fetching /og-image.jpg.
+#   * Content-Security-Policy. A naive `default-src 'self'` would break Supabase
+#     REST/Auth XHR and Realtime WebSockets (wss:// is not covered by an https://
+#     source), React/Tailwind runtime style injection, and remote car imagery. It
+#     would also mean hard-coding the Supabase project ref here, duplicating
+#     VITE_SUPABASE_URL somewhere that silently rots. Out of scope for a hosting
+#     migration — do it deliberately, with testing, or not at all.
+
+# Restore the immutable caching of content-hashed bundles that Vercel applied
+# automatically. Cloudflare's default for every asset is
+# `public, max-age=0, must-revalidate`, so this must be opted into explicitly.
+# Never applied to /index.html — Cloudflare's default is already correct there.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Unhashed files copied straight from public/: the favicons and the OG image.
+# One day rather than immutable, so a replacement actually propagates.
+/*.png
+  Cache-Control: public, max-age=86400
+
+/og-image.jpg
+  Cache-Control: public, max-age=86400
+
+# Keep the *.workers.dev hostname out of search results so it cannot compete
+# with thecollectionisb.com.pk for the same content. Cloudflare Pages adds
+# X-Robots-Tag: noindex to preview deployments automatically; Workers does not,
+# so it has to be written here.
+#
+# This placeholder form is Cloudflare's own documented example for matching a
+# workers.dev host. Absolute-URL patterns must begin with https:// and cannot
+# specify a port.
+https://:version.:subdomain.workers.dev/*
+  X-Robots-Tag: noindex, nofollow
+
+# ---------------------------------------------------------------------------
+# DUAL-DOMAIN CANONICAL.
+#
+# This one Worker serves the site on BOTH thecollectionisb.com.pk and
+# thecollectionisb.pk. Identical content on two hostnames competes with itself
+# in search, so the .pk copy declares .com.pk authoritative for the SAME path.
+#
+# `:splat` captures everything after the leading slash and is interpolated into
+# the header value — so /collection/abc on .pk canonicalises to
+# https://thecollectionisb.com.pk/collection/abc, not to the homepage.
+#
+# This is the JavaScript-free half of the guarantee. The other half is
+# src/app/hooks/use-canonical.ts, which injects <link rel="canonical"> per route
+# for rendering crawlers. The two always resolve to the same URL. Google
+# supports the Link-header form for web search results.
+#
+# NOTE: deliberately NOT a noindex. noindex would drop the .pk copy from search
+# entirely and discard any link equity pointing at it; a canonical consolidates
+# that equity onto .com.pk instead, which is the whole point of serving both.
+https://thecollectionisb.pk/*
+  Link: <https://thecollectionisb.com.pk/:splat>; rel="canonical"
+
+https://www.thecollectionisb.pk/*
+  Link: <https://thecollectionisb.com.pk/:splat>; rel="canonical"

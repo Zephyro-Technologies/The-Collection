@@ -1,0 +1,215 @@
+# Build and deploy both apps to Cloudflare Workers Static Assets.
+#
+# WHY GITHUB ACTIONS RATHER THAN CLOUDFLARE'S WORKERS BUILDS GIT INTEGRATION:
+#
+#   1. pnpm version. pnpm-workspace.yaml uses `allowBuilds` (pnpm >= 10.26.0)
+#      and `minimumReleaseAge` (pnpm >= 10.16.0). Cloudflare's build image ships
+#      pnpm 10.11.1, which predates BOTH and silently ignores unrecognised
+#      workspace keys. On that image nothing is approved to run install scripts,
+#      so esbuild's postinstall (which materialises its bin shim) and
+#      @tailwindcss/oxide's postinstall never run, and `vite build` fails — or,
+#      worse, produces no CSS without failing. Cloudflare's images do not read
+#      package.json `engines`, do not infer pnpm from pnpm-lock.yaml, and do not
+#      document packageManager/corepack support; a dashboard-only PNPM_VERSION
+#      build variable is the sole documented lever there.
+#
+#   2. Config in the repo. With Workers Builds, the root directory, build
+#      command, deploy command, build watch paths, PNPM_VERSION and NODE_VERSION
+#      are ALL dashboard-only settings with no committed equivalent. Here every
+#      one of them is a line below.
+#
+# Only secret material lives outside the repo (GitHub repository secrets).
+
+name: Deploy to Cloudflare Workers
+
+# AUTO-DEPLOY IS DISABLED. Deployment is done by Cloudflare Workers Builds (the
+# dashboard Git integration), so this workflow must NOT also fire on push — two
+# CI systems deploying the same Worker on the same commit race each other, and
+# the loser's version wins at random.
+#
+# It is kept as a manual fallback: Actions -> Deploy to Cloudflare Workers ->
+# Run workflow. That still requires the four repository secrets described below.
+#
+# To hand deployment BACK to GitHub Actions, restore the push trigger:
+#   push:
+#     branches: [master]
+#     paths:
+#       - "apps/**"
+#       - "packages/**"
+#       - "package.json"
+#       - "pnpm-lock.yaml"
+#       - "pnpm-workspace.yaml"
+#       - ".node-version"
+#       - ".github/workflows/deploy.yml"
+# ...and disconnect the Git integration in the Cloudflare dashboard first.
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "Which app to deploy"
+        type: choice
+        default: both
+        options: [both, website, dashboard]
+
+# This workflow reads the repo and talks to Cloudflare. It never writes back to
+# GitHub, so drop GITHUB_TOKEN to read-only rather than inheriting the repo
+# default (often write-all).
+permissions:
+  contents: read
+
+# Never let two deploys of the same branch race each other. Not cancel-in-progress:
+# a half-finished asset upload should be allowed to finish.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # Pin the deploy tool to an exact published version (verified on npm).
+  #
+  # wrangler is deliberately NOT a workspace dependency. It pulls in workerd
+  # (and optionally sharp), both of which run install scripts; under pnpm 11's
+  # strictDepBuilds (default true) that hard-fails `pnpm install` with
+  # ERR_PNPM_IGNORED_BUILDS until they are added to allowBuilds in
+  # pnpm-workspace.yaml. Running it through npx keeps it out of the pnpm graph
+  # entirely and leaves the lockfile untouched, while staying version-pinned.
+  WRANGLER_VERSION: "4.113.0"
+
+jobs:
+  # Turns the workflow_dispatch app choice into the deploy matrix.
+  #
+  # This job exists because the `matrix` context is NOT available in a job-level
+  # `if:` — GitHub evaluates job conditionals BEFORE matrix expansion and rejects
+  # the file with "Unrecognized named-value: 'matrix'". (It IS available in
+  # `jobs.<id>.name` and in step-level `if:`, which makes the mistake easy to
+  # miss.) `jobs.<id>.strategy` does allow the `needs` context, so deriving the
+  # matrix here is the supported way to deploy a single app on demand — and it
+  # genuinely skips the other app rather than running a green no-op job.
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      - id: pick
+        env:
+          # On push, always both. On a manual run, honour the choice.
+          APP: ${{ github.event_name == 'workflow_dispatch' && inputs.app || 'both' }}
+        run: |
+          website='{"app":"website","package":"@collection/website"}'
+          dashboard='{"app":"dashboard","package":"@collection/dashboard"}'
+          case "$APP" in
+            website)   echo "matrix={\"include\":[$website]}"            >> "$GITHUB_OUTPUT" ;;
+            dashboard) echo "matrix={\"include\":[$dashboard]}"          >> "$GITHUB_OUTPUT" ;;
+            *)         echo "matrix={\"include\":[$website,$dashboard]}" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+  deploy:
+    needs: setup
+    runs-on: ubuntu-latest
+
+    strategy:
+      # Never let a dashboard failure block a website deploy, or vice versa.
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
+
+    name: ${{ matrix.app }}
+
+    steps:
+      # NOTE ON ACTION PINNING: the three actions below are pinned to mutable
+      # major tags, not commit SHAs — a deliberate, recorded trade-off rather
+      # than an oversight. SHA pins go stale silently and stop receiving
+      # security fixes unless paired with an automated bumper, which this repo
+      # does not have. The blast radius is already narrowed: `permissions` is
+      # contents:read, and CLOUDFLARE_API_TOKEN is scoped to the deploy step
+      # alone. If you later add .github/dependabot.yml with a github-actions
+      # entry, switch these to full 40-char SHAs at the same time.
+      - uses: actions/checkout@v4
+
+      # Pinned to the local toolchain version. 10.26.0 is the true floor for
+      # `allowBuilds`, but 11.0.8 matches local exactly AND defaults
+      # strictDepBuilds to true, so an unapproved build script fails loudly
+      # rather than being skipped with a warning.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.0.8
+
+      # Node version comes from the committed .node-version file, so the repo is
+      # the single source of truth. `cache: pnpm` requires pnpm to already be on
+      # PATH, hence the ordering above.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      # Runs at the REPO ROOT, where pnpm-lock.yaml and pnpm-workspace.yaml live.
+      # That is what lets `@collection/shared: workspace:*` link to the raw
+      # TypeScript source that both apps compile.
+      #
+      # --frozen-lockfile means any package.json edit without a regenerated,
+      # committed lockfile fails here with ERR_PNPM_OUTDATED_LOCKFILE. It also
+      # makes minimumReleaseAge a no-op, because a frozen install performs no
+      # resolution.
+      #
+      # The three win32 optionalDependencies in the root package.json are skipped
+      # silently on Linux and do not trip the frozen check: they are recorded in
+      # the lockfile's root `importers` block, so manifest and lockfile agree,
+      # and platform filtering happens later at fetch/link time.
+      # supportedArchitectures.os: [linux] is what put the Linux native binaries
+      # into the lockfile in the first place — do not remove it.
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Fail fast and loudly rather than shipping a bundle containing `undefined`
+      # and debugging a Supabase client-init error in production.
+      - name: Assert build variables are present
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          test -n "$VITE_SUPABASE_URL"      || { echo "::error::VITE_SUPABASE_URL secret is missing or empty"; exit 1; }
+          test -n "$VITE_SUPABASE_ANON_KEY" || { echo "::error::VITE_SUPABASE_ANON_KEY secret is missing or empty"; exit 1; }
+
+      # THE VITE_* VARIABLES MUST BE IN THE ENVIRONMENT OF *THIS* STEP.
+      #
+      # Vite statically replaces import.meta.env.VITE_* in the bundle at build
+      # time (packages/shared/supabase.ts is the only reader in the whole repo).
+      # Cloudflare Worker runtime variables and `wrangler secret put` are a
+      # DIFFERENT STORE and would never reach this code — there is no Worker
+      # script to read them from. Setting them at runtime produces a bundle
+      # containing `undefined`, with no build error.
+      #
+      # Both apps need them because packages/shared is consumed as raw TypeScript
+      # and is compiled independently by each app's Vite. Both point at the same
+      # Supabase project, and the anon key is public by design (RLS is the real
+      # boundary), so duplication carries no extra exposure.
+      - name: Build ${{ matrix.app }}
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: pnpm --filter ${{ matrix.package }} build
+
+      # _headers is only honoured if it is INSIDE assets.directory. It gets there
+      # via Vite's verbatim copy of public/ — a silent, easy-to-break link in the
+      # chain, and for the dashboard it is the entire noindex guarantee at the
+      # header layer. Verify it every single build.
+      - name: Assert _headers reached the build output
+        run: |
+          test -f "apps/${{ matrix.app }}/dist/_headers" \
+            || { echo "::error::apps/${{ matrix.app }}/dist/_headers is missing — public/_headers did not reach the assets directory"; exit 1; }
+          test -f "apps/${{ matrix.app }}/dist/index.html" \
+            || { echo "::error::apps/${{ matrix.app }}/dist/index.html is missing — SPA fallback would 404"; exit 1; }
+
+      # Runs from the app directory so wrangler picks up that app's
+      # wrangler.jsonc and resolves assets.directory ("./dist") relative to it.
+      # Wrangler only uploads the already-built dist/ — it has no build step and
+      # no build-variable configuration key of its own.
+      #
+      # Auth is via CLOUDFLARE_API_TOKEN (+ CLOUDFLARE_ACCOUNT_ID), which belong
+      # to THIS step only, never to the build step.
+      - name: Deploy ${{ matrix.app }} to Cloudflare
+        working-directory: apps/${{ matrix.app }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@${{ env.WRANGLER_VERSION }} deploy
