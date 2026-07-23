@@ -32,7 +32,8 @@ A **pnpm workspace** with two apps and one shared package:
   (`/`, `/collection`, `/collection/:id`, `/privacy`, `/terms`, `*`).
 - `packages/shared/` — `@collection/shared`: the Supabase data layer **both apps import**, plus the
   brand design tokens at `packages/shared/styles/tokens.css`.
-- `supabase/` — SQL migrations + `PROVISIONING.md` (the account-creation runbook). Repo root.
+- `supabase/` — SQL migrations, Edge Functions (`functions/`), + `PROVISIONING.md` (the
+  account-creation runbook). Repo root.
 - `brand/` — the standalone brand sheet (`brand-sheet.html`) and logo artwork. Repo root.
 
 Each app is a self-contained Vite project with its own `package.json`, `vite.config.ts`,
@@ -121,6 +122,7 @@ what lets `import.meta.env.VITE_*` resolve **per app**. `index.ts` re-exports ev
 | `storage.ts` | Car-photo upload/delete against the `car-images` bucket. |
 | `notifications.ts` | Admin-only "a partner added a car" feed + `subscribeNotifications`. |
 | `enquiries.ts` | Buyer enquiries, the `match_enquiry` RPC, `subscribeEnquiries`. |
+| `partners.ts` | Admin-only partner provisioning. **The one module that calls an Edge Function, not a table** — see below. |
 
 **This package is the only place that knows database column names.** The DB is `snake_case`
 (`mileage`, `docs_complete`, `showroom_id`); the app is `camelCase` (`mileageKm`, `docsComplete`,
@@ -133,8 +135,11 @@ touching React.
 
 Real Supabase Auth. **Role and showroom come from the user's `app_metadata` JWT claim** — server-set
 and not user-editable. Never read `user_metadata` for authorization (a user can edit their own and
-would self-escalate). Accounts are provisioned by hand in Supabase; there is no invite flow — see
-`supabase/PROVISIONING.md`.
+would self-escalate).
+
+**Partner accounts are provisioned from the dashboard** (Partners screen → the `admin-partners` Edge
+Function). **Admin and photographer accounts are still stamped by hand** in the Supabase SQL editor —
+see `supabase/PROVISIONING.md`. There is no invite flow for anyone.
 
 | Role | Scope |
 | --- | --- |
@@ -145,6 +150,14 @@ would self-escalate). Accounts are provisioned by hand in Supabase; there is no 
 A **showroom is a tenant**; every car belongs to exactly one. The Collection is the fixed master
 showroom `MASTER_SHOWROOM_ID` (`11111111-…`) — the only showroom whose cars can appear on the public
 website.
+
+`showrooms.can_view_master` (migration 0020) is a per-partner, admin-toggled flag that widens the
+inventory **SELECT** policy so that partner can also *see* The Collection's cars. It grants nothing
+else: INSERT/UPDATE/DELETE still read `admin OR showroom_id = app_showroom_id()`, so a flagged partner
+can never edit, publish, feature or delete a master car. It is a **column, not a JWT claim**,
+deliberately — a claim would not take effect until the partner signed out and back in. Client-side,
+a flagged partner must fetch **unscoped** (`fetchShowroomId = undefined`) and let RLS decide what
+comes back; asking for one `showroom_id` would filter the master's cars straight back out.
 
 `App.tsx` derives `isAdmin` / `isPhotographer` / `myShowroomId` from the session and gates the UI:
 a non-admin gets `navList` filtered to Inventory and `shownView` forced to `"inventory"`. An
@@ -184,10 +197,12 @@ Directory map under `apps/dashboard/src/app/`:
   shared formatters/derivations (`formatCurrency`, `relativeAge`, `ticketAgeBucket`,
   `windowClosingSoon`). Car types come from `@collection/shared`, not here.
 - `components/screens/` — one component per `ViewKey` (Home, Conversations, Tickets, Appointments,
-  Matching, Inventory) + SignIn. The `ViewKey` union and nav list live in `components/shell/nav-items.ts`.
+  Matching, Inventory, Partners) + SignIn. The `ViewKey` union and nav list live in
+  `components/shell/nav-items.ts`; an item marked `desktopOnly` (Partners) is kept out of the mobile
+  `BottomNav`, which is sized for six tabs.
 - `components/shell/` — Sidebar, BottomNav, TopBar, GlobalSearch, NotificationsSheet, AvatarMenu.
-- `components/{inventory,matching,conversation,customer,appointments,brand,common}/` — feature
-  widgets. `common/` holds StatusPill, ChannelBadge, AgingDot, SectionHeader.
+- `components/{inventory,matching,partners,conversation,customer,appointments,brand,common}/` —
+  feature widgets. `common/` holds StatusPill, ChannelBadge, AgingDot, SectionHeader.
 - `components/ui/` — **shadcn/ui (Radix-based)**. Generated; treat as a vendored library.
   `ui/utils.ts` exports the `cn()` class-merge helper used everywhere.
 - `components/figma/ImageWithFallback.tsx` — use for remote images.
@@ -208,6 +223,26 @@ Matching is **rules-based, on-demand, and server-side**: the `match_enquiry` RPC
 INVOKER`, so the admin's all-showroom RLS lets it match a buyer against any showroom's stock, tiered
 `exact` / `possible`. The reverse push is a DB trigger (0011): adding a car that matches an active
 buying enquiry notifies the admin — no app code involved.
+
+### Partners (the one server-side surface)
+
+`supabase/functions/admin-partners/` is the repo's **only Edge Function**, and the only place the
+**service-role key** exists. It exists because two things are impossible from the browser with the
+anon key: creating an auth user with a password, and stamping the trusted `app_metadata` claim. The
+Partners screen (admin-only) calls it through `packages/shared/partners.ts` to create, remove, reset
+the password of, and set visibility on partner showrooms.
+
+The security boundary is **inside the function**, not RLS — it runs as service role, so it
+re-verifies the caller's JWT and requires `app_metadata.role === 'admin'` on *every* action. If you
+add an action, add that check with it. Passwords are never logged or returned.
+
+Create rolls back: if the auth user can't be made, the showroom row it just inserted is deleted, so a
+tenant with no way in can't exist. Remove refuses while the showroom still holds cars
+(`inventory.showroom_id` is `ON DELETE RESTRICT`) and only proceeds with an explicit `force`, which
+also deletes those cars and their storage objects.
+
+Deploy it with `supabase functions deploy admin-partners` — it is **not** part of the Cloudflare
+build, and a dashboard deploy does not update it.
 
 ## Website
 

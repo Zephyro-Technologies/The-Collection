@@ -12,7 +12,7 @@ import { Textarea } from "../ui/textarea";
 import { Switch } from "../ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import type { Car, CarStatus, Showroom } from "@collection/shared";
-import { uploadCarImage, deleteCarImage, isAllowedImageType, randomId, ALLOWED_IMAGE_LABEL } from "@collection/shared";
+import { uploadCarImage, deleteCarImage, isAllowedImageType, randomId, ALLOWED_IMAGE_LABEL, MASTER_SHOWROOM_ID } from "@collection/shared";
 import { ShowroomBar } from "../inventory/ShowroomBar";
 import { PhotoStrip } from "../inventory/PhotoStrip";
 import { formatCurrency } from "../../data/mock";
@@ -45,6 +45,12 @@ interface Props {
   canPublish?: boolean;
   canManageStatus?: boolean;
   canDelete?: boolean;
+  // Set ONLY for a non-admin who can see cars they do not own — i.e. a partner
+  // granted canViewMaster (migration 0020), whose list now also carries The
+  // Collection's stock. Any car outside this showroom is read-only: no edit
+  // affordance, and owner badges turn on so the two are told apart. Undefined
+  // for admins and for ungranted partners, whose lists are single-showroom.
+  editableShowroomId?: string;
 }
 
 const STATUSES: CarStatus[] = ["available", "reserved", "sold"];
@@ -57,7 +63,7 @@ const emptyForm = (): FormState => ({
   image: "", photos: [], description: "", docsComplete: true,
 });
 
-export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onDelete, onOpenCar, editRequestId, onEditHandled, isAdmin = false, showrooms = [], activeShowroomId, onChangeShowroom, uploadShowroomId, canPublish = false, canManageStatus = true, canDelete = true }: Props) {
+export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onDelete, onOpenCar, editRequestId, onEditHandled, isAdmin = false, showrooms = [], activeShowroomId, onChangeShowroom, uploadShowroomId, canPublish = false, canManageStatus = true, canDelete = true, editableShowroomId }: Props) {
   const [filter, setFilter] = useState<CarStatus | "all">("all");
   const [q, setQ] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -82,8 +88,18 @@ export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onD
   // showroom each car belongs to. Partners always have a single (own) context.
   const isAll = isAdmin && activeShowroomId === "all";
   const canAdd = !isAll;
-  const showOwner = isAdmin && isAll;
-  const showroomName = (id: string) => showrooms.find((s) => s.id === id)?.name ?? "—";
+  // A car this user may not modify. Only ever true for a partner granted
+  // canViewMaster, looking at one of The Collection's cars — RLS refuses the
+  // write anyway, so this exists to stop the UI offering an impossible action.
+  const isForeign = (car: Car) => !!editableShowroomId && car.showroomId !== editableShowroomId;
+  // Owner badges whenever the visible list spans more than one showroom: the
+  // admin's "All" overview, or a granted partner's own + The Collection's.
+  const showOwner = isAdmin ? isAll : !!editableShowroomId;
+  // A partner is only ever given their OWN showroom row (RLS won't show them
+  // another tenant's), so the master's name can't come from `showrooms` — but by
+  // construction the only foreign cars they can see ARE The Collection's.
+  const showroomName = (id: string) =>
+    showrooms.find((s) => s.id === id)?.name ?? (id === MASTER_SHOWROOM_ID ? "The Collection" : "—");
 
   // Seed the form ONCE when the dialog opens for a given target (add vs. a
   // specific car). Intentionally NOT keyed on `cars`: re-seeding on every live
@@ -114,9 +130,15 @@ export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onD
   useEffect(() => {
     if (!editRequestId) return;
     if (isAll) { onEditHandled?.(); return; } // the "All" overview is read-only
+    // Belt-and-braces: the detail sheet already hides Edit for a car the user
+    // doesn't own, so this should be unreachable — but never open the form on
+    // someone else's car just because an id arrived.
+    const target = cars.find((c) => c.id === editRequestId);
+    if (target && isForeign(target)) { onEditHandled?.(); return; }
     setEditingId(editRequestId);
     setOpen(true);
     onEditHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editRequestId, onEditHandled, isAll]);
 
   const filtered = useMemo(() => {
@@ -343,7 +365,7 @@ export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onD
                     {showroomName(car.showroomId)}
                   </span>
                 )}
-                {!isAll && (
+                {!isAll && !isForeign(car) && (
                   <button
                     onClick={(e) => { e.stopPropagation(); openEdit(car.id); }}
                     className="absolute top-3 right-3 p-2 rounded-md bg-white/90 text-noir hover:bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
@@ -407,7 +429,7 @@ export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onD
                   <StatusPill tone={car.status as "available" | "reserved" | "sold"} />
                 </div>
               </div>
-              {!isAll && (
+              {!isAll && !isForeign(car) && (
                 <button
                   onClick={(e) => { e.stopPropagation(); openEdit(car.id); }}
                   className="hidden sm:flex shrink-0 p-2 rounded-md text-ink-40 hover:text-noir hover:bg-platinum-soft opacity-0 group-hover:opacity-100 transition-opacity"

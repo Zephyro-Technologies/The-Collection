@@ -11,6 +11,7 @@ import { Tickets } from "./components/screens/Tickets";
 import { Appointments } from "./components/screens/Appointments";
 import { Matching } from "./components/screens/Matching";
 import { Inventory } from "./components/screens/Inventory";
+import { Partners } from "./components/screens/Partners";
 import { CustomerProfileSheet } from "./components/customer/CustomerProfileSheet";
 import { CarDetailSheet } from "./components/inventory/CarDetailSheet";
 import { NotificationsSheet } from "./components/shell/NotificationsSheet";
@@ -48,8 +49,16 @@ import {
   deleteEnquiry,
   subscribeEnquiries,
   isEnquiryActive,
+  listPartners,
+  createPartner,
+  removePartner,
+  resetPartnerPassword,
+  setPartnerVisibility,
 } from "@collection/shared";
-import type { Car, CarStatus, Showroom, Notification, Enquiry, EnquiryInput } from "@collection/shared";
+import type {
+  Car, CarStatus, Showroom, Notification, Enquiry, EnquiryInput,
+  Partner, CreatePartnerInput,
+} from "@collection/shared";
 import type { Session } from "@supabase/supabase-js";
 
 export default function App() {
@@ -130,6 +139,82 @@ export default function App() {
     try { await markAllRead(); } catch { /* realtime will reconcile */ }
   };
 
+  // --- Partners: admin-only provisioning of partner showrooms ---------------
+  // Every mutation goes through the admin-partners Edge Function (the only
+  // holder of the service-role key), so these follow the same call → re-fetch →
+  // toast pattern as inventory rather than patching local state: the function
+  // is the authority on what actually landed.
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [partnersLoading, setPartnersLoading] = useState(false);
+  const [partnersError, setPartnersError] = useState<string | null>(null);
+  const [partnersBusy, setPartnersBusy] = useState(false);
+
+  const loadPartners = useCallback(() => {
+    setPartnersLoading(true);
+    listPartners()
+      .then((p) => { setPartners(p); setPartnersError(null); })
+      .catch((e) => setPartnersError(e instanceof Error ? e.message : "Failed to load partners."))
+      .finally(() => setPartnersLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (!isAdmin) { setPartners([]); return; }
+    loadPartners();
+  }, [isAdmin, loadPartners]);
+
+  const handleCreatePartner = async (input: CreatePartnerInput) => {
+    setPartnersBusy(true);
+    try {
+      const p = await createPartner(input);
+      loadPartners();
+      toast.success(`${p.name} added. Give them their sign-in details.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not add the partner.");
+    } finally {
+      setPartnersBusy(false);
+    }
+  };
+
+  const handleSetPartnerVisibility = async (showroomId: string, canViewMaster: boolean) => {
+    // Optimistic: the switch must not lag under the operator's finger. The
+    // re-fetch below reconciles, and a failure both toasts and reverts.
+    setPartners((prev) => prev.map((p) => (p.id === showroomId ? { ...p, canViewMaster } : p)));
+    try {
+      await setPartnerVisibility(showroomId, canViewMaster);
+      toast.success(canViewMaster ? "Partner can now view your inventory." : "Access to your inventory removed.");
+    } catch (e) {
+      setPartners((prev) => prev.map((p) => (p.id === showroomId ? { ...p, canViewMaster: !canViewMaster } : p)));
+      toast.error(e instanceof Error ? e.message : "Could not change visibility.");
+    }
+  };
+
+  const handleResetPartnerPassword = async (userId: string, password: string) => {
+    setPartnersBusy(true);
+    try {
+      await resetPartnerPassword(userId, password);
+      toast.success("Password updated. Pass it on to the partner.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not reset the password.");
+    } finally {
+      setPartnersBusy(false);
+    }
+  };
+
+  const handleRemovePartner = async (showroomId: string, force: boolean) => {
+    setPartnersBusy(true);
+    try {
+      const { removedCars } = await removePartner(showroomId, { force });
+      loadPartners();
+      // The cars list needs no explicit refresh: deleting inventory rows emits
+      // DELETE events, and subscribeInventory re-pulls the admin's scope.
+      toast.success(removedCars > 0 ? `Partner removed, along with ${removedCars} car${removedCars === 1 ? "" : "s"}.` : "Partner removed.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not remove the partner.");
+    } finally {
+      setPartnersBusy(false);
+    }
+  };
+
   // --- Enquiries + Matching: admin-only, live -------------------------------
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [enquiriesLoading, setEnquiriesLoading] = useState(false);
@@ -185,11 +270,21 @@ export default function App() {
     ? (activeShowroomId ?? myShowroomId ?? "all")
     : undefined;
 
+  // Whether this non-admin has been granted sight of The Collection's stock
+  // (migration 0020). Read from their own showroom row, so it takes effect on
+  // the next fetch rather than after a re-login — which is why the flag is a
+  // column and not a JWT claim.
+  const canViewMaster = myShowroom?.canViewMaster ?? false;
+
   // Fetch scope: the admin fetches ALL cars (needed for cross-screen car lookups
   // and the "All" overview) and the Inventory screen filters by context
-  // client-side; a partner fetches only their own. Phase B: this is UI scoping —
-  // RLS is still permissive; Phase C makes it the real boundary.
-  const fetchShowroomId = isAdmin ? undefined : myShowroomId;
+  // client-side. A partner normally fetches only their own — but one granted
+  // canViewMaster must fetch UNSCOPED, because the widened SELECT policy is what
+  // decides what comes back: their own showroom plus the master's. Asking for a
+  // single showroom_id would filter the master's cars back out client-side.
+  // RLS remains the boundary either way; a partner without the flag still gets
+  // nothing but their own rows even on an unscoped query.
+  const fetchShowroomId = isAdmin || canViewMaster ? undefined : myShowroomId;
 
   // Where a NEW car is stamped: the admin's active context, or the partner's own.
   // null = cannot add (admin in the "All" overview — must pick a showroom first).
@@ -559,13 +654,35 @@ export default function App() {
               editRequestId={editCarId}
               onEditHandled={() => setEditCarId(null)}
               isAdmin={isAdmin}
-              showrooms={showrooms}
+              // A partner never loads the showroom list (RLS shows them only
+              // their own row), but a granted partner now sees two showrooms'
+              // cars — hand them their own row so the owner badge can name it.
+              // The Collection's name is resolved by id in Inventory.
+              showrooms={isAdmin ? showrooms : myShowroom ? [myShowroom] : []}
               activeShowroomId={isAdmin ? effectiveActive : undefined}
               onChangeShowroom={isAdmin ? setActiveShowroomId : undefined}
               uploadShowroomId={writeShowroomId ?? undefined}
               canPublish={isAdmin}
               canManageStatus={!isPhotographer}
               canDelete={!isPhotographer}
+              // Only set when a non-admin can see cars they do NOT own, i.e. a
+              // partner granted canViewMaster. Inventory then treats any car
+              // outside this showroom as read-only. Left undefined otherwise, so
+              // nothing changes for admins or ungranted partners.
+              editableShowroomId={!isAdmin && canViewMaster ? myShowroomId : undefined}
+            />
+          )}
+          {shownView === "partners" && isAdmin && (
+            <Partners
+              partners={partners}
+              loading={partnersLoading}
+              error={partnersError}
+              busy={partnersBusy}
+              onReload={loadPartners}
+              onCreate={handleCreatePartner}
+              onSetVisibility={handleSetPartnerVisibility}
+              onResetPassword={handleResetPartnerPassword}
+              onRemove={handleRemovePartner}
             />
           )}
         </main>
@@ -577,7 +694,19 @@ export default function App() {
         // Read-only in the "All" overview, and for a car outside the active
         // context — e.g. a partner's car opened from a Matching result. You manage
         // a car only from within its own showroom context.
-        readOnly={isAdmin && (effectiveActive === "all" || (openCarId ? cars.find((c) => c.id === openCarId)?.showroomId !== effectiveActive : false))}
+        // Admin: read-only in the "All" overview and for any car outside the
+        // active context. Non-admin: read-only for any car they do not own —
+        // which only arises for a partner granted canViewMaster, looking at one
+        // of The Collection's cars. RLS refuses the write regardless; this stops
+        // the UI offering an action that could only ever fail.
+        readOnly={
+          isAdmin
+            ? effectiveActive === "all" ||
+              (openCarId ? cars.find((c) => c.id === openCarId)?.showroomId !== effectiveActive : false)
+            : openCarId
+              ? cars.find((c) => c.id === openCarId)?.showroomId !== myShowroomId
+              : false
+        }
         canManageStatus={!isPhotographer}
         canDelete={!isPhotographer}
         onClose={() => setOpenCarId(null)}

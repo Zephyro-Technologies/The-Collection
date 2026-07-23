@@ -10,10 +10,14 @@ interface Props {
 }
 
 export function BottomNav({ active, onSelect, counts, urgent, items = navItems }: Props) {
+  // The bar is sized for six tabs at phone width. Items flagged desktopOnly
+  // (Partners) stay in the sidebar rather than shrinking every other tab.
+  const tabs = items.filter((i) => !i.desktopOnly);
+
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-noir text-cream border-t border-white/10" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-      <div className="grid" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
-        {items.map(({ key, Icon, label, short }) => {
+      <div className="grid" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+        {tabs.map(({ key, Icon, label, short }) => {
           const isActive = active === key;
           const count = counts[key];
           return (
