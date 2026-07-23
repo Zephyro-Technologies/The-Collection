@@ -13,7 +13,7 @@ import { Switch } from "../ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import type { Car, CarStatus, Showroom } from "@collection/shared";
 import { uploadCarImage, deleteCarImage, isAllowedImageType, randomId, ALLOWED_IMAGE_LABEL, MASTER_SHOWROOM_ID } from "@collection/shared";
-import { ShowroomBar } from "../inventory/ShowroomBar";
+import { ShowroomSelect } from "../inventory/ShowroomSelect";
 import { PhotoStrip } from "../inventory/PhotoStrip";
 import {
   InventoryFilters, matchesCarFilter, sanitizeCarFilter, emptyCarFilter, isCarFilterActive,
@@ -282,28 +282,31 @@ export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onD
   return (
     <div className="px-4 md:px-8 py-8 max-w-7xl mx-auto w-full min-w-0">
       <SectionHeader
-        eyebrow="The Collection"
         title="Inventory"
         subtitle="A considered selection, not an inventory."
         action={
-          <Button
-            className="bg-noir text-white hover:bg-noir-700 disabled:opacity-40"
-            onClick={openAdd}
-            disabled={!canAdd}
-            title={canAdd ? undefined : "Select a showroom to add a car"}
-          >
-            <Plus size={15} className="mr-1.5" />Add a car
-          </Button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {/* The showroom context lives here now instead of in a full-width
+                banner. Admin-only: a partner or photographer has exactly one
+                showroom, and the top bar already names it for them. */}
+            {isAdmin && onChangeShowroom && activeShowroomId !== undefined && (
+              <ShowroomSelect
+                showrooms={showrooms}
+                activeShowroomId={activeShowroomId}
+                onChange={onChangeShowroom}
+              />
+            )}
+            <Button
+              className="bg-noir text-white hover:bg-noir-700 disabled:opacity-40"
+              onClick={openAdd}
+              disabled={!canAdd}
+              title={canAdd ? undefined : "Select a showroom to add a car"}
+            >
+              <Plus size={15} className="mr-1.5" />Add a car
+            </Button>
+          </div>
         }
       />
-
-      {isAdmin && onChangeShowroom && activeShowroomId !== undefined && (
-        <ShowroomBar
-          showrooms={showrooms}
-          activeShowroomId={activeShowroomId}
-          onChange={onChangeShowroom}
-        />
-      )}
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
         <div className="relative flex-1 max-w-sm">
