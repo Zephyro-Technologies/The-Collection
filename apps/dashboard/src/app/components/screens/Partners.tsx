@@ -107,11 +107,10 @@ export function Partners({
                 </div>
 
                 <DropdownMenu>
-                  {/* Styled directly rather than `asChild` + <Button>: Button is a
-                      plain function component (no forwardRef) and this app runs
-                      React 18, where a function component cannot receive a ref — so
-                      Radix's Slot cannot wire the trigger and the menu never opens.
-                      This is the same idiom Matching uses. */}
+                  {/* Styled directly on the trigger, the same idiom Matching uses.
+                      (`asChild` + <Button> also works now that ui/button.tsx
+                      forwards refs — it did not before, which is why this menu
+                      would not open.) */}
                   <DropdownMenuTrigger
                     className="shrink-0 p-1.5 rounded-md text-ink-40 hover:text-noir hover:bg-platinum-soft transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent"
                     aria-label={`Actions for ${p.name}`}

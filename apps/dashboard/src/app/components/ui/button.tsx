@@ -34,25 +34,40 @@ const buttonVariants = cva(
   },
 );
 
-function Button({
-  className,
-  variant,
-  size,
-  asChild = false,
-  ...props
-}: React.ComponentProps<"button"> &
+type ButtonProps = React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
-  }) {
+  };
+
+// DO NOT "modernise" this back to a plain `function Button(props)`.
+//
+// Newer shadcn generates this component without forwardRef, because React 19
+// treats `ref` as an ordinary prop. THIS APP IS ON REACT 18 (see the react
+// pin in package.json), where a plain function component cannot receive a ref
+// at all — it is silently dropped.
+//
+// That breaks every Radix `asChild` consumer that wraps a <Button>: Slot clones
+// the child and hands it a ref, the ref goes nowhere, and the primitive never
+// wires up. A DropdownMenuTrigger done that way still forwards onClick (props
+// are spread) but never opens, because Radix has no element to anchor its popper
+// to — which looked exactly like a dead button on the Partners screen.
+//
+// forwardRef makes `asChild` work again for every caller. Remove it only when
+// this app actually moves to React 19.
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { className, variant, size, asChild = false, ...props },
+  ref,
+) {
   const Comp = asChild ? Slot : "button";
 
   return (
     <Comp
+      ref={ref}
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />
   );
-}
+});
 
 export { Button, buttonVariants };
