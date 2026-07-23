@@ -1,11 +1,26 @@
 # Provisioning dashboard accounts
 
-Accounts are created **manually by The Collection in Supabase** — there is no
-invite flow or admin screen in the app. What makes an account an admin, a
-partner, or a photographer is its **`app_metadata`** JWT claim (server-set, not
-user-editable). Both the app (`authContextFromSession`) and the database (RLS via
-`public.app_role()` / `public.app_showroom_id()`) read `role` and `showroom_id`
-from `app_metadata` — never `user_metadata`.
+What makes an account an admin, a partner, or a photographer is its
+**`app_metadata`** JWT claim (server-set, not user-editable). Both the app
+(`authContextFromSession`) and the database (RLS via `public.app_role()` /
+`public.app_showroom_id()`) read `role` and `showroom_id` from `app_metadata` —
+never `user_metadata`.
+
+> ## Partners: use the dashboard, not this runbook
+>
+> **Partner showrooms are now self-served.** An admin creates them from
+> **Dashboard → Partners**: enter a showroom name, the partner's email and a
+> password, and the showroom row *and* its login are created together with the
+> right claim already stamped. The same screen resets a partner's password,
+> toggles whether they may view The Collection's inventory, and removes a partner
+> outright.
+>
+> That screen calls the `admin-partners` Edge Function, which is the only holder
+> of the service-role key — the browser cannot create a user or set
+> `app_metadata` with the anon key, which is exactly why the function exists.
+>
+> The SQL below remains the path for **admin** and **photographer** accounts
+> (there is no UI for those), and as a fallback if the function is unavailable.
 
 | role | `app_metadata` | Can do |
 | --- | --- | --- |

@@ -19,6 +19,14 @@ export interface Showroom {
   name: string;
   isMaster: boolean;
   isActive: boolean;
+  /**
+   * May users scoped to THIS showroom also SEE the master showroom's inventory?
+   * Read-only in every case — migration 0020 widens the SELECT policy only, so a
+   * flagged partner can view The Collection's cars and never write to them.
+   * Admin-toggled from the Partners screen; a column rather than a JWT claim so
+   * it applies on the partner's next query instead of after a re-login.
+   */
+  canViewMaster: boolean;
 }
 
 interface ShowroomRow {
@@ -27,10 +35,19 @@ interface ShowroomRow {
   name: string;
   is_master: boolean;
   is_active: boolean;
+  can_view_master: boolean | null;
 }
 
 function rowToShowroom(r: ShowroomRow): Showroom {
-  return { id: r.id, slug: r.slug, name: r.name, isMaster: r.is_master, isActive: r.is_active };
+  return {
+    id: r.id,
+    slug: r.slug,
+    name: r.name,
+    isMaster: r.is_master,
+    isActive: r.is_active,
+    // Rows read before 0020 was applied won't carry the column — match the DB default.
+    canViewMaster: r.can_view_master ?? false,
+  };
 }
 
 /** All showrooms — the master (The Collection) first, then by name. */

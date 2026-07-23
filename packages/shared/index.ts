@@ -14,3 +14,4 @@ export * from "./showrooms";
 export * from "./notifications";
 export * from "./storage";
 export * from "./enquiries";
+export * from "./partners";
