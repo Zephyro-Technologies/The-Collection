@@ -187,6 +187,17 @@
     font-size: var(--font-size);
   }
 
+  /* Text selection. Without this it is the browser's default blue, which is the
+     one colour in the app that belongs to no palette.
+     Background ONLY — deliberately no `color`. The dashboard is mostly light but
+     has dark chrome (sidebar, bottom nav, avatar menu, sign-in), and forcing a
+     text colour would be wrong on one of them. Letting the text keep its own
+     colour works on both: the tint is light over white (noir text, ~15:1) and
+     dark over noir (cream text, ~13:1). */
+  ::selection {
+    background: color-mix(in srgb, var(--accent) 28%, transparent);
+  }
+
   /* Fraunces display serif — headings + hero numbers. Colour comes from
      --foreground (NOT a hardcoded --noir), so a heading placed on a dark
      surface can never render near-black on near-black. */
