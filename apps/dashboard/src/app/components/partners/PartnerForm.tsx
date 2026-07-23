@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Switch } from "../ui/switch";
 import { Button } from "../ui/button";
+import { AccessToggle } from "./AccessToggle";
 import { PasswordField } from "./PasswordField";
 import { MIN_PASSWORD_LENGTH } from "./password";
 import type { CreatePartnerInput } from "@collection/shared";
@@ -15,7 +15,13 @@ interface Props {
   onSubmit: (input: CreatePartnerInput) => void;
 }
 
-const empty = () => ({ name: "", email: "", password: "", canViewMaster: false });
+const empty = () => ({
+  name: "",
+  email: "",
+  password: "",
+  canViewMaster: false,
+  canViewPartners: false,
+});
 
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 
@@ -38,6 +44,7 @@ export function PartnerForm({ open, busy = false, onClose, onSubmit }: Props) {
       email: form.email.trim().toLowerCase(),
       password: form.password,
       canViewMaster: form.canViewMaster,
+      canViewPartners: form.canViewPartners,
     });
   };
 
@@ -82,19 +89,20 @@ export function PartnerForm({ open, busy = false, onClose, onSubmit }: Props) {
 
           <PasswordField value={form.password} onChange={(password) => set({ password })} />
 
-          <div className="flex items-start justify-between gap-4 rounded-lg border border-card-border p-3">
-            <div>
-              <div style={{ fontSize: "0.875rem", fontWeight: 500 }}>
-                Can view The Collection&rsquo;s inventory
-              </div>
-              <p className="text-ink-40 mt-0.5" style={{ fontSize: "0.75rem", lineHeight: 1.5 }}>
-                Read-only. They can see your stock but never edit, publish or feature it.
-                You can change this at any time.
-              </p>
-            </div>
-            <Switch
+          <div className="grid gap-2.5">
+            <AccessToggle
+              boxed
+              title="Can view The Collection&rsquo;s inventory"
+              description="Read-only. They can see your stock but never edit, publish or feature it."
               checked={form.canViewMaster}
-              onCheckedChange={(canViewMaster) => set({ canViewMaster })}
+              onChange={(canViewMaster) => set({ canViewMaster })}
+            />
+            <AccessToggle
+              boxed
+              title="Can view other partners&rsquo; inventory"
+              description="Read-only, and one-directional — this does not let other partners see them. Competing showrooms will be able to see each other's stock."
+              checked={form.canViewPartners}
+              onChange={(canViewPartners) => set({ canViewPartners })}
             />
           </div>
         </div>

@@ -53,11 +53,11 @@ import {
   createPartner,
   removePartner,
   resetPartnerPassword,
-  setPartnerVisibility,
+  setPartnerAccess,
 } from "@collection/shared";
 import type {
   Car, CarStatus, Showroom, Notification, Enquiry, EnquiryInput,
-  Partner, CreatePartnerInput,
+  Partner, CreatePartnerInput, PartnerAccess,
 } from "@collection/shared";
 import type { Session } from "@supabase/supabase-js";
 
@@ -92,13 +92,37 @@ export default function App() {
   // it resolves for a partner too, whose `showrooms` list is never loaded.
   const [myShowroom, setMyShowroom] = useState<Showroom | null>(null);
 
+  // What this non-admin has been granted sight of, beyond their own showroom:
+  // The Collection's stock (0020) and/or every other partner's (0021). Read from
+  // their own showroom row, so a toggle takes effect on the next fetch rather
+  // than after a re-login — which is why these are columns, not JWT claims.
+  //
+  // Declared HERE, immediately after `myShowroom`, because the effect below both
+  // reads `seesForeignCars` and lists it as a dependency. A dependency array is
+  // an ordinary argument expression evaluated during render, so a `const`
+  // declared further down would still be in the temporal dead zone and throw
+  // "Cannot access 'seesForeignCars' before initialization" — white-screening the
+  // whole app on first render, for every role. Keep these above line 95.
+  const canViewMaster = myShowroom?.canViewMaster ?? false;
+  const canViewPartners = myShowroom?.canViewPartners ?? false;
+  const seesForeignCars = canViewMaster || canViewPartners;
+
   useEffect(() => {
-    if (!isAdmin) { setShowrooms([]); setActiveShowroomId(null); return; }
+    if (!isAdmin) {
+      setActiveShowroomId(null);
+      // A partner needs the showroom list only when they can see cars they do
+      // not own — it is what names the owner badge. RLS (0021) returns exactly
+      // the rows they are allowed to know about: their own, plus the master
+      // and/or the other partners their flags permit. Safe to call unscoped.
+      if (seesForeignCars) listShowrooms().then(setShowrooms).catch(() => setShowrooms([]));
+      else setShowrooms([]);
+      return;
+    }
     listShowrooms().then(setShowrooms).catch(() => {});
     let saved: string | null = null;
     try { saved = localStorage.getItem("tc:activeShowroom"); } catch { /* ignore */ }
     setActiveShowroomId(saved ?? myShowroomId ?? "all");
-  }, [isAdmin, myShowroomId]);
+  }, [isAdmin, myShowroomId, seesForeignCars]);
 
   useEffect(() => {
     if (isAdmin && activeShowroomId) {
@@ -175,15 +199,25 @@ export default function App() {
     }
   };
 
-  const handleSetPartnerVisibility = async (showroomId: string, canViewMaster: boolean) => {
-    // Optimistic: the switch must not lag under the operator's finger. The
-    // re-fetch below reconciles, and a failure both toasts and reverts.
-    setPartners((prev) => prev.map((p) => (p.id === showroomId ? { ...p, canViewMaster } : p)));
+  // `access` is the COMPLETE desired state of both axes, not just the switch that
+  // moved — see PartnerAccess for why sending a partial patch is unsafe.
+  // `changed` is only used to word the toast.
+  const handleSetPartnerAccess = async (
+    showroomId: string,
+    access: PartnerAccess,
+    changed: keyof PartnerAccess,
+  ) => {
+    // Optimistic so the switch does not lag under the operator's finger.
+    setPartners((prev) => prev.map((p) => (p.id === showroomId ? { ...p, ...access } : p)));
     try {
-      await setPartnerVisibility(showroomId, canViewMaster);
-      toast.success(canViewMaster ? "Partner can now view your inventory." : "Access to your inventory removed.");
+      await setPartnerAccess(showroomId, access);
+      const what = changed === "canViewMaster" ? "your inventory" : "other partners' inventory";
+      toast.success(access[changed] ? `Partner can now view ${what}.` : `Access to ${what} removed.`);
     } catch (e) {
-      setPartners((prev) => prev.map((p) => (p.id === showroomId ? { ...p, canViewMaster: !canViewMaster } : p)));
+      // Re-pull rather than restoring a snapshot: another axis may have been
+      // written successfully in the meantime, and the function is the authority
+      // on what actually landed.
+      loadPartners();
       toast.error(e instanceof Error ? e.message : "Could not change visibility.");
     }
   };
@@ -270,21 +304,15 @@ export default function App() {
     ? (activeShowroomId ?? myShowroomId ?? "all")
     : undefined;
 
-  // Whether this non-admin has been granted sight of The Collection's stock
-  // (migration 0020). Read from their own showroom row, so it takes effect on
-  // the next fetch rather than after a re-login — which is why the flag is a
-  // column and not a JWT claim.
-  const canViewMaster = myShowroom?.canViewMaster ?? false;
-
   // Fetch scope: the admin fetches ALL cars (needed for cross-screen car lookups
   // and the "All" overview) and the Inventory screen filters by context
   // client-side. A partner normally fetches only their own — but one granted
-  // canViewMaster must fetch UNSCOPED, because the widened SELECT policy is what
-  // decides what comes back: their own showroom plus the master's. Asking for a
-  // single showroom_id would filter the master's cars back out client-side.
-  // RLS remains the boundary either way; a partner without the flag still gets
-  // nothing but their own rows even on an unscoped query.
-  const fetchShowroomId = isAdmin || canViewMaster ? undefined : myShowroomId;
+  // either visibility flag must fetch UNSCOPED, because the widened SELECT policy
+  // is what decides what comes back. Asking for a single showroom_id would filter
+  // the very rows the grant exists to reveal straight back out client-side.
+  // RLS remains the boundary either way; an ungranted partner still gets nothing
+  // but their own rows even on an unscoped query.
+  const fetchShowroomId = isAdmin || seesForeignCars ? undefined : myShowroomId;
 
   // Where a NEW car is stamped: the admin's active context, or the partner's own.
   // null = cannot add (admin in the "All" overview — must pick a showroom first).
@@ -654,22 +682,22 @@ export default function App() {
               editRequestId={editCarId}
               onEditHandled={() => setEditCarId(null)}
               isAdmin={isAdmin}
-              // A partner never loads the showroom list (RLS shows them only
-              // their own row), but a granted partner now sees two showrooms'
-              // cars — hand them their own row so the owner badge can name it.
-              // The Collection's name is resolved by id in Inventory.
-              showrooms={isAdmin ? showrooms : myShowroom ? [myShowroom] : []}
+              // For a granted partner this carries every showroom they may know
+              // about (own + master and/or other partners), so owner badges can
+              // name them. Empty for an ungranted partner, who sees only their
+              // own cars and therefore renders no badges at all.
+              showrooms={showrooms}
               activeShowroomId={isAdmin ? effectiveActive : undefined}
               onChangeShowroom={isAdmin ? setActiveShowroomId : undefined}
               uploadShowroomId={writeShowroomId ?? undefined}
               canPublish={isAdmin}
               canManageStatus={!isPhotographer}
               canDelete={!isPhotographer}
-              // Only set when a non-admin can see cars they do NOT own, i.e. a
-              // partner granted canViewMaster. Inventory then treats any car
-              // outside this showroom as read-only. Left undefined otherwise, so
-              // nothing changes for admins or ungranted partners.
-              editableShowroomId={!isAdmin && canViewMaster ? myShowroomId : undefined}
+              // Only set when a non-admin can see cars they do NOT own — a
+              // partner granted either visibility flag. Inventory then treats any
+              // car outside this showroom as read-only. Left undefined otherwise,
+              // so nothing changes for admins or ungranted partners.
+              editableShowroomId={!isAdmin && seesForeignCars ? myShowroomId : undefined}
             />
           )}
           {shownView === "partners" && isAdmin && (
@@ -680,7 +708,7 @@ export default function App() {
               busy={partnersBusy}
               onReload={loadPartners}
               onCreate={handleCreatePartner}
-              onSetVisibility={handleSetPartnerVisibility}
+              onSetAccess={handleSetPartnerAccess}
               onResetPassword={handleResetPartnerPassword}
               onRemove={handleRemovePartner}
             />

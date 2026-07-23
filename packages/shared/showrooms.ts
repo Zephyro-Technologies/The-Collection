@@ -27,6 +27,12 @@ export interface Showroom {
    * it applies on the partner's next query instead of after a re-login.
    */
   canViewMaster: boolean;
+  /**
+   * May users scoped to THIS showroom also SEE every OTHER partner's inventory?
+   * Read-only and one-directional (migration 0021) — granting it here does not
+   * let those other partners see this showroom in return.
+   */
+  canViewPartners: boolean;
 }
 
 interface ShowroomRow {
@@ -36,6 +42,7 @@ interface ShowroomRow {
   is_master: boolean;
   is_active: boolean;
   can_view_master: boolean | null;
+  can_view_partners: boolean | null;
 }
 
 function rowToShowroom(r: ShowroomRow): Showroom {
@@ -45,8 +52,10 @@ function rowToShowroom(r: ShowroomRow): Showroom {
     name: r.name,
     isMaster: r.is_master,
     isActive: r.is_active,
-    // Rows read before 0020 was applied won't carry the column — match the DB default.
+    // Rows read before 0020/0021 were applied won't carry the columns — match
+    // the DB defaults rather than letting undefined widen anything.
     canViewMaster: r.can_view_master ?? false,
+    canViewPartners: r.can_view_partners ?? false,
   };
 }
 

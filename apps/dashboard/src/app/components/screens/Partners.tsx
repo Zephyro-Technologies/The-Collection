@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Plus, MoreHorizontal, KeyRound, Trash2, RotateCw, Store, Car as CarIcon } from "lucide-react";
 import { SectionHeader } from "../common/SectionHeader";
 import { Button } from "../ui/button";
-import { Switch } from "../ui/switch";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "../ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog";
 import {
@@ -11,8 +10,9 @@ import {
 } from "../ui/alert-dialog";
 import { PartnerForm } from "../partners/PartnerForm";
 import { PasswordField } from "../partners/PasswordField";
+import { AccessToggle } from "../partners/AccessToggle";
 import { MIN_PASSWORD_LENGTH } from "../partners/password";
-import type { Partner, CreatePartnerInput } from "@collection/shared";
+import type { Partner, CreatePartnerInput, PartnerAccess } from "@collection/shared";
 
 interface Props {
   partners: Partner[];
@@ -20,7 +20,11 @@ interface Props {
   error?: string | null;
   onReload: () => void;
   onCreate: (input: CreatePartnerInput) => void;
-  onSetVisibility: (showroomId: string, canViewMaster: boolean) => void;
+  /**
+   * Send the COMPLETE desired state of both visibility axes. `changed` names the
+   * switch the operator actually moved, and is used only to word the toast.
+   */
+  onSetAccess: (showroomId: string, access: PartnerAccess, changed: keyof PartnerAccess) => void;
   onResetPassword: (userId: string, password: string) => void;
   /** force = the showroom still holds cars and the operator confirmed anyway. */
   onRemove: (showroomId: string, force: boolean) => void;
@@ -30,7 +34,7 @@ interface Props {
 
 export function Partners({
   partners, loading, error, onReload,
-  onCreate, onSetVisibility, onResetPassword, onRemove, busy = false,
+  onCreate, onSetAccess, onResetPassword, onRemove, busy = false,
 }: Props) {
   const [addOpen, setAddOpen] = useState(false);
   const [resetFor, setResetFor] = useState<{ userId: string; email: string } | null>(null);
@@ -137,19 +141,26 @@ export function Partners({
                 </DropdownMenu>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-card-border flex items-center justify-between gap-4">
-                <div>
-                  <div style={{ fontSize: "0.85rem", fontWeight: 500 }}>
-                    Can view The Collection&rsquo;s inventory
-                  </div>
-                  <p className="text-ink-40 mt-0.5" style={{ fontSize: "0.75rem" }}>
-                    Read-only — they can never edit, publish or feature your cars.
-                  </p>
-                </div>
-                <Switch
+              <div className="mt-4 pt-3 border-t border-card-border grid gap-3">
+                {/* Both axes are always sent — the full desired state, not just the
+                    switch that moved. See PartnerAccess in @collection/shared. */}
+                <AccessToggle
+                  title="Can view The Collection&rsquo;s inventory"
+                  description="Read-only — they can never edit, publish or feature your cars."
                   checked={p.canViewMaster}
-                  onCheckedChange={(v) => onSetVisibility(p.id, v)}
-                  aria-label={`Let ${p.name} view The Collection's inventory`}
+                  onChange={(v) =>
+                    onSetAccess(p.id, { canViewMaster: v, canViewPartners: p.canViewPartners }, "canViewMaster")
+                  }
+                  ariaLabel={`Let ${p.name} view The Collection's inventory`}
+                />
+                <AccessToggle
+                  title="Can view other partners&rsquo; inventory"
+                  description="Read-only, one-directional — this does not let other partners see this showroom."
+                  checked={p.canViewPartners}
+                  onChange={(v) =>
+                    onSetAccess(p.id, { canViewMaster: p.canViewMaster, canViewPartners: v }, "canViewPartners")
+                  }
+                  ariaLabel={`Let ${p.name} view other partners' inventory`}
                 />
               </div>
             </div>

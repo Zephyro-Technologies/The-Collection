@@ -26,6 +26,11 @@ export interface Partner {
   isActive: boolean;
   /** May this partner SEE The Collection's inventory? Read-only either way. */
   canViewMaster: boolean;
+  /**
+   * May this partner SEE every OTHER partner's inventory? Read-only, and
+   * one-directional — granting it to A does not let B see A (migration 0021).
+   */
+  canViewPartners: boolean;
   createdAt: string;
   /** Cars currently filed under this showroom — drives the remove confirmation. */
   carCount: number;
@@ -38,6 +43,23 @@ export interface CreatePartnerInput {
   email: string;
   password: string;
   canViewMaster?: boolean;
+  canViewPartners?: boolean;
+}
+
+/**
+ * The two independent read-visibility axes, as a COMPLETE desired state — both
+ * fields are required even when only one switch moved.
+ *
+ * That is deliberate and load-bearing. An older deployment of the Edge Function
+ * read `Boolean(body.canViewMaster)` unconditionally, so a partial patch that
+ * omitted it wrote `can_view_master = false` and silently revoked a grant the
+ * operator never touched, while returning 200. Sending the full state means the
+ * worst an out-of-date function can do is rewrite a value to what it already
+ * was. Never reintroduce partial patches here.
+ */
+export interface PartnerAccess {
+  canViewMaster: boolean;
+  canViewPartners: boolean;
 }
 
 /** Thrown when a remove is refused because the showroom still holds cars. */
@@ -83,10 +105,29 @@ async function call<T>(body: Record<string, unknown>): Promise<T> {
   throw err;
 }
 
+/**
+ * Normalise a partner off the wire.
+ *
+ * An older function build omits `canViewPartners` from its response entirely.
+ * Left undefined it would reach a Radix <Switch checked={undefined}>, which
+ * silently becomes UNCONTROLLED — it would render off, ignore the real database
+ * value, and then drift as the operator clicked it. Coerce to the DB defaults,
+ * exactly as showrooms.ts does for the same columns.
+ */
+function normalisePartner(p: Partner): Partner {
+  return {
+    ...p,
+    canViewMaster: p.canViewMaster ?? false,
+    canViewPartners: p.canViewPartners ?? false,
+    accounts: p.accounts ?? [],
+    carCount: p.carCount ?? 0,
+  };
+}
+
 /** Every partner showroom, with its login accounts and car count. Admin-only. */
 export async function listPartners(): Promise<Partner[]> {
   const { partners } = await call<{ partners: Partner[] }>({ action: "list" });
-  return partners;
+  return (partners ?? []).map(normalisePartner);
 }
 
 /**
@@ -104,18 +145,28 @@ export async function createPartner(input: CreatePartnerInput): Promise<Partner>
     email: input.email,
     password: input.password,
     canViewMaster: input.canViewMaster ?? false,
+    canViewPartners: input.canViewPartners ?? false,
   });
-  return partner;
+  return normalisePartner(partner);
 }
 
 /**
- * Grant or revoke this partner's view of The Collection's inventory.
- * Read-only in both directions — see migration 0020. Takes effect on the
- * partner's next query; no re-login needed, because the flag is a column and
- * not a JWT claim.
+ * Grant or revoke what this partner may SEE — The Collection's inventory
+ * (migration 0020), other partners' inventory (0021), or both. Read-only in
+ * every case: neither flag grants any write, publish or feature ability.
+ *
+ * Takes effect on the partner's next query, with no re-login, because these are
+ * columns rather than JWT claims. Pass only the axis being changed.
  */
-export async function setPartnerVisibility(showroomId: string, canViewMaster: boolean): Promise<void> {
-  await call({ action: "set-visibility", showroomId, canViewMaster });
+export async function setPartnerAccess(showroomId: string, access: PartnerAccess): Promise<void> {
+  // Always both axes — see PartnerAccess. Do not narrow this to the axis that
+  // changed; an older function build would read the missing one as false.
+  await call({
+    action: "set-visibility",
+    showroomId,
+    canViewMaster: access.canViewMaster,
+    canViewPartners: access.canViewPartners,
+  });
 }
 
 /** Set a new password on a partner login. Refused for non-partner accounts. */

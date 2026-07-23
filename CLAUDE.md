@@ -151,13 +151,31 @@ A **showroom is a tenant**; every car belongs to exactly one. The Collection is 
 showroom `MASTER_SHOWROOM_ID` (`11111111-…`) — the only showroom whose cars can appear on the public
 website.
 
-`showrooms.can_view_master` (migration 0020) is a per-partner, admin-toggled flag that widens the
-inventory **SELECT** policy so that partner can also *see* The Collection's cars. It grants nothing
-else: INSERT/UPDATE/DELETE still read `admin OR showroom_id = app_showroom_id()`, so a flagged partner
-can never edit, publish, feature or delete a master car. It is a **column, not a JWT claim**,
-deliberately — a claim would not take effect until the partner signed out and back in. Client-side,
-a flagged partner must fetch **unscoped** (`fetchShowroomId = undefined`) and let RLS decide what
-comes back; asking for one `showroom_id` would filter the master's cars straight back out.
+**Two independent per-partner visibility flags** on `showrooms`, both admin-toggled from the Partners
+screen, both defaulting to false:
+
+| flag | migration | lets that partner also SEE |
+| --- | --- | --- |
+| `can_view_master` | 0020 | The Collection's (master) inventory |
+| `can_view_partners` | 0021 | every *other* partner's inventory |
+
+They compose, so a partner sees their own showroom plus whichever axes are on. Both widen **SELECT
+only** — INSERT/UPDATE/DELETE still read `admin OR showroom_id = app_showroom_id()`, so a flagged
+partner can never edit, publish, feature or delete a car they don't own. 0021 additionally widens the
+**showrooms** SELECT policy, mirroring the inventory branches exactly, so the UI can name whose car it
+is showing; a caller may read a showroom row iff they may already read that showroom's cars.
+
+`can_view_partners` is **one-directional** — granting it to A does not let B see A — and the partner
+being viewed does not consent, which is why it is off by default and enabled one partner at a time.
+Per-pair control ("A may see B but not C") would need a junction table; the boolean is the wrong
+shape for it.
+
+Both are **columns, not JWT claims**, deliberately: a claim would not take effect until the partner
+signed out and back in. Client-side, a partner with *either* flag must fetch **unscoped**
+(`fetchShowroomId = undefined`) and let RLS decide what comes back — asking for one `showroom_id`
+would filter the very rows the grant exists to reveal straight back out. `App.tsx` calls this
+`seesForeignCars`, and it also drives `editableShowroomId`, which makes Inventory treat any car
+outside the partner's own showroom as read-only.
 
 `App.tsx` derives `isAdmin` / `isPhotographer` / `myShowroomId` from the session and gates the UI:
 a non-admin gets `navList` filtered to Inventory and `shownView` forced to `"inventory"`. An

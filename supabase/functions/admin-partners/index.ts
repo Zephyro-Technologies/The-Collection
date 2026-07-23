@@ -126,7 +126,7 @@ Deno.serve(async (req: Request) => {
       case "list": {
         const { data: showrooms, error } = await admin
           .from("showrooms")
-          .select("id, slug, name, is_master, is_active, can_view_master, created_at")
+          .select("id, slug, name, is_master, is_active, can_view_master, can_view_partners, created_at")
           .eq("is_master", false)
           .order("name");
         if (error) throw error;
@@ -148,6 +148,7 @@ Deno.serve(async (req: Request) => {
             name: s.name,
             isActive: s.is_active,
             canViewMaster: s.can_view_master,
+            canViewPartners: s.can_view_partners,
             createdAt: s.created_at,
             carCount: carCount.get(s.id) ?? 0,
             accounts: accounts.get(s.id) ?? [],
@@ -161,6 +162,7 @@ Deno.serve(async (req: Request) => {
         const email = String(body.email ?? "").trim().toLowerCase();
         const password = String(body.password ?? "");
         const canViewMaster = Boolean(body.canViewMaster ?? false);
+        const canViewPartners = Boolean(body.canViewPartners ?? false);
 
         if (!name) return json({ error: "Showroom name is required." }, 400, origin);
         if (!isEmail(email)) return json({ error: "A valid email is required." }, 400, origin);
@@ -186,8 +188,12 @@ Deno.serve(async (req: Request) => {
 
         const { data: showroom, error: insertError } = await admin
           .from("showrooms")
-          .insert({ slug, name, is_master: false, is_active: true, can_view_master: canViewMaster })
-          .select("id, slug, name, is_active, can_view_master, created_at")
+          .insert({
+            slug, name, is_master: false, is_active: true,
+            can_view_master: canViewMaster,
+            can_view_partners: canViewPartners,
+          })
+          .select("id, slug, name, is_active, can_view_master, can_view_partners, created_at")
           .single();
         if (insertError) throw insertError;
 
@@ -218,6 +224,7 @@ Deno.serve(async (req: Request) => {
             name: showroom.name,
             isActive: showroom.is_active,
             canViewMaster: showroom.can_view_master,
+            canViewPartners: showroom.can_view_partners,
             createdAt: showroom.created_at,
             carCount: 0,
             accounts: [{ id: created.user.id, email: created.user.email ?? email }],
@@ -228,15 +235,23 @@ Deno.serve(async (req: Request) => {
       // --- SET VISIBILITY --------------------------------------------------
       case "set-visibility": {
         const showroomId = String(body.showroomId ?? "");
-        const canViewMaster = Boolean(body.canViewMaster);
         if (!showroomId) return json({ error: "showroomId is required." }, 400, origin);
         if (showroomId === MASTER_SHOWROOM_ID) {
           return json({ error: "The Collection already sees everything." }, 400, origin);
         }
-        const { error } = await admin
-          .from("showrooms").update({ can_view_master: canViewMaster }).eq("id", showroomId);
+        // A partial patch: each visibility axis is independent, and the caller
+        // sends only the one the operator actually toggled. Booleans are checked
+        // by type rather than truthiness so `false` is a real value to write and
+        // an absent key is genuinely "leave alone".
+        const patch: Record<string, boolean> = {};
+        if (typeof body.canViewMaster === "boolean") patch.can_view_master = body.canViewMaster;
+        if (typeof body.canViewPartners === "boolean") patch.can_view_partners = body.canViewPartners;
+        if (Object.keys(patch).length === 0) {
+          return json({ error: "Nothing to change." }, 400, origin);
+        }
+        const { error } = await admin.from("showrooms").update(patch).eq("id", showroomId);
         if (error) throw error;
-        return json({ ok: true, showroomId, canViewMaster }, 200, origin);
+        return json({ ok: true, showroomId, ...patch }, 200, origin);
       }
 
       // --- RESET PASSWORD --------------------------------------------------
