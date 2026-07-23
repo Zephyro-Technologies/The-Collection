@@ -15,6 +15,9 @@ import type { Car, CarStatus, Showroom } from "@collection/shared";
 import { uploadCarImage, deleteCarImage, isAllowedImageType, randomId, ALLOWED_IMAGE_LABEL, MASTER_SHOWROOM_ID } from "@collection/shared";
 import { ShowroomBar } from "../inventory/ShowroomBar";
 import { PhotoStrip } from "../inventory/PhotoStrip";
+import {
+  InventoryFilters, matchesCarFilter, emptyCarFilter, isCarFilterActive, type CarFilter,
+} from "../inventory/InventoryFilters";
 import { formatCurrency } from "../../data/mock";
 
 interface Props {
@@ -65,6 +68,7 @@ const emptyForm = (): FormState => ({
 
 export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onDelete, onOpenCar, editRequestId, onEditHandled, isAdmin = false, showrooms = [], activeShowroomId, onChangeShowroom, uploadShowroomId, canPublish = false, canManageStatus = true, canDelete = true, editableShowroomId }: Props) {
   const [filter, setFilter] = useState<CarStatus | "all">("all");
+  const [carFilter, setCarFilter] = useState<CarFilter>(emptyCarFilter);
   const [q, setQ] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [open, setOpen] = useState(false);
@@ -141,15 +145,27 @@ export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onD
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editRequestId, onEditHandled, isAll]);
 
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    return cars
+  // Cars in the visible showroom scope, before any operator-chosen filter. The
+  // make/model/variant dropdowns take their options from THIS, so they always
+  // offer exactly what the current context holds — and nothing that would come
+  // back empty.
+  const scoped = useMemo(
+    () =>
       // Admin, specific context → only that showroom's cars (client-side; the
       // admin fetches all). "All" and partners are already correctly scoped.
-      .filter((c) => (isAdmin && activeShowroomId && activeShowroomId !== "all" ? c.showroomId === activeShowroomId : true))
+      cars.filter((c) =>
+        isAdmin && activeShowroomId && activeShowroomId !== "all" ? c.showroomId === activeShowroomId : true,
+      ),
+    [cars, isAdmin, activeShowroomId],
+  );
+
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return scoped
       .filter((c) => (filter === "all" ? true : c.status === filter))
+      .filter((c) => matchesCarFilter(c, carFilter))
       .filter((c) => !s || `${c.make} ${c.model} ${c.variant} ${c.colour}`.toLowerCase().includes(s));
-  }, [cars, filter, q, isAdmin, activeShowroomId]);
+  }, [scoped, filter, q, carFilter]);
 
   const submit = () => {
     if (!form.make || !form.model) return;
@@ -311,6 +327,24 @@ export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onD
         </div>
       </div>
 
+      <InventoryFilters
+        cars={scoped}
+        value={carFilter}
+        onChange={setCarFilter}
+        // "Showing", not a bare count: this reflects the status pills and the
+        // search box as well as the dropdowns it sits beside. Shown whenever
+        // anything is narrowing — not when the two numbers merely differ, which
+        // would hide it exactly when a filter matched everything (e.g. picking
+        // the only make a showroom stocks) and make the control look inert.
+        trailing={
+          isCarFilterActive(carFilter) || filter !== "all" || q.trim() !== "" ? (
+            <span className="text-ink-40" style={{ fontSize: "0.75rem" }}>
+              Showing {filtered.length} of {scoped.length}
+            </span>
+          ) : null
+        }
+      />
+
       {loading ? (
         <div className="flex flex-col items-center justify-center gap-3 py-24 text-ink-40">
           <Loader2 className="animate-spin" size={22} />
@@ -342,6 +376,14 @@ export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onD
         <div className="rounded-lg border border-dashed border-border p-12 text-center">
           <div className="accent-rule mx-auto mb-3" />
           <p className="text-ink-60">No cars match this view.</p>
+          {/* When a make/model/variant filter is what emptied the list, offer the
+              way out here too — the Clear control sits in a toolbar the operator
+              has usually scrolled past by the time they read this. */}
+          {isCarFilterActive(carFilter) && (
+            <Button variant="outline" className="mt-4" onClick={() => setCarFilter(emptyCarFilter())}>
+              Clear filters
+            </Button>
+          )}
         </div>
       ) : viewMode === "grid" ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
