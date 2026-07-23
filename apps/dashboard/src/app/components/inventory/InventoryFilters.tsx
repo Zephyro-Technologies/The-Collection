@@ -1,17 +1,28 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import type { Car } from "@collection/shared";
-import { ANY, NONE, distinct, includesValue, key, sameValue, emptyCarFilter, isCarFilterActive, type CarFilter } from "./car-filter";
+import {
+  ANY, NONE, emptyCarFilter, isCarFilterActive,
+  makeOptions, modelOptions, variantOptions, hasBlankVariant,
+  type CarFilter, type FilterOption,
+} from "./car-filter";
 
-// Re-exported so screens can import the filter contract from the component they
-// already use, without needing to know it lives in a sibling module.
-export { ANY, NONE, emptyCarFilter, isCarFilterActive, matchesCarFilter } from "./car-filter";
+// Re-exported so screens can import the whole filter contract from the component
+// they already use, without needing to know it lives in a sibling module.
+export {
+  ANY, NONE, emptyCarFilter, isCarFilterActive, matchesCarFilter, sanitizeCarFilter,
+} from "./car-filter";
 export type { CarFilter } from "./car-filter";
 
 interface Props {
   /** Cars already narrowed to the visible showroom scope — options come from these. */
   cars: Car[];
+  /**
+   * The filter to display. Pass the SANITIZED filter (see sanitizeCarFilter), so
+   * a selection that no longer exists in scope never reaches the Select as a
+   * value with no matching item.
+   */
   value: CarFilter;
   onChange: (next: CarFilter) => void;
   /** Rendered at the end of the row, e.g. a result count. */
@@ -29,50 +40,17 @@ interface Props {
  * Deliberately independent of the status filter and the search box. Letting those
  * narrow the options too would make the lists shift under the operator as they
  * type, which reads as the UI losing data.
+ *
+ * Each item's VALUE is the normalised key and its LABEL is a spelling found in
+ * stock. Radix selects the displayed item by exact string equality, so binding to
+ * the key is what stops a label change (a newly added "PORSCHE" outranking an
+ * older "Porsche") leaving the trigger blank over a still-filtered grid.
  */
 export function InventoryFilters({ cars, value, onChange, trailing }: Props) {
-  const makes = useMemo(() => distinct(cars.map((c) => c.make)), [cars]);
-
-  const models = useMemo(
-    () => distinct(cars.filter((c) => value.make === ANY || sameValue(c.make, value.make)).map((c) => c.model)),
-    [cars, value.make],
-  );
-
-  // The cars the variant control is choosing between, after make/model narrowing.
-  const variantScope = useMemo(
-    () =>
-      cars
-        .filter((c) => value.make === ANY || sameValue(c.make, value.make))
-        .filter((c) => value.model === ANY || sameValue(c.model, value.model)),
-    [cars, value.make, value.model],
-  );
-
-  const variants = useMemo(() => distinct(variantScope.map((c) => c.variant)), [variantScope]);
-
-  // Offer "No variant" only when some car in scope actually has none — otherwise
-  // it would be an option guaranteed to return nothing.
-  const hasBlankVariant = useMemo(
-    () => variantScope.some((c) => key(c.variant) === ""),
-    [variantScope],
-  );
-
-  // Drop a selection that no longer exists — the admin switched showroom context,
-  // or the car was sold and removed by the live inventory feed. Without this the
-  // grid would sit empty with a filter naming something that isn't there, and no
-  // obvious way back. Converges: every branch resets to ANY, which is always valid.
-  useEffect(() => {
-    const variantStillValid =
-      value.variant === ANY ||
-      (value.variant === NONE ? hasBlankVariant : includesValue(variants, value.variant));
-
-    if (value.make !== ANY && !includesValue(makes, value.make)) {
-      onChange(emptyCarFilter());
-    } else if (value.model !== ANY && !includesValue(models, value.model)) {
-      onChange({ ...value, model: ANY, variant: ANY });
-    } else if (!variantStillValid) {
-      onChange({ ...value, variant: ANY });
-    }
-  }, [makes, models, variants, hasBlankVariant, value, onChange]);
+  const makes = useMemo(() => makeOptions(cars), [cars]);
+  const models = useMemo(() => modelOptions(cars, value), [cars, value]);
+  const variants = useMemo(() => variantOptions(cars, value), [cars, value]);
+  const blankVariant = useMemo(() => hasBlankVariant(cars, value), [cars, value]);
 
   // Picking a make invalidates the model and variant beneath it; picking a model
   // invalidates the variant. Reset them rather than leaving an impossible pair.
@@ -84,7 +62,7 @@ export function InventoryFilters({ cars, value, onChange, trailing }: Props) {
     label: string,
     v: string,
     on: (s: string) => void,
-    options: string[],
+    options: FilterOption[],
     disabled: boolean,
     /** An extra sentinel entry appended after the real options, e.g. "No variant". */
     extra?: { value: string; label: string },
@@ -100,8 +78,8 @@ export function InventoryFilters({ cars, value, onChange, trailing }: Props) {
       <SelectContent>
         <SelectItem value={ANY}>{`All ${label.toLowerCase()}s`}</SelectItem>
         {options.map((o) => (
-          <SelectItem key={o} value={o}>
-            {o}
+          <SelectItem key={o.key} value={o.key}>
+            {o.label}
           </SelectItem>
         ))}
         {extra && <SelectItem value={extra.value}>{extra.label}</SelectItem>}
@@ -120,8 +98,8 @@ export function InventoryFilters({ cars, value, onChange, trailing }: Props) {
         value.variant,
         setVariant,
         variants,
-        value.model === ANY || (variants.length === 0 && !hasBlankVariant),
-        hasBlankVariant ? { value: NONE, label: "No variant" } : undefined,
+        value.model === ANY || (variants.length === 0 && !blankVariant),
+        blankVariant ? { value: NONE, label: "No variant" } : undefined,
       )}
 
       {isCarFilterActive(value) && (

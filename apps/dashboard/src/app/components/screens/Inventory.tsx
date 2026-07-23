@@ -16,7 +16,8 @@ import { uploadCarImage, deleteCarImage, isAllowedImageType, randomId, ALLOWED_I
 import { ShowroomBar } from "../inventory/ShowroomBar";
 import { PhotoStrip } from "../inventory/PhotoStrip";
 import {
-  InventoryFilters, matchesCarFilter, emptyCarFilter, isCarFilterActive, type CarFilter,
+  InventoryFilters, matchesCarFilter, sanitizeCarFilter, emptyCarFilter, isCarFilterActive,
+  type CarFilter,
 } from "../inventory/InventoryFilters";
 import { formatCurrency } from "../../data/mock";
 
@@ -159,16 +160,34 @@ export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onD
     [cars, isAdmin, activeShowroomId],
   );
 
+  // The filter actually in force. A held selection can stop existing — the admin
+  // switches showroom, or the live feed removes the last matching car — and this
+  // drops those parts during RENDER. Correcting it in an effect instead would
+  // paint a full empty grid for one frame before clearing itself. Returns the same
+  // object when nothing changed, so it is stable as a dependency.
+  const activeFilter = useMemo(() => sanitizeCarFilter(carFilter, scoped), [carFilter, scoped]);
+
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     return scoped
       .filter((c) => (filter === "all" ? true : c.status === filter))
-      .filter((c) => matchesCarFilter(c, carFilter))
+      .filter((c) => matchesCarFilter(c, activeFilter))
       .filter((c) => !s || `${c.make} ${c.model} ${c.variant} ${c.colour}`.toLowerCase().includes(s));
-  }, [scoped, filter, q, carFilter]);
+  }, [scoped, filter, q, activeFilter]);
+
+  /** Anything narrowing the grid — used for the count and the empty-state reset. */
+  const anyNarrowing = isCarFilterActive(activeFilter) || filter !== "all" || q.trim() !== "";
+
+  const clearAllFilters = () => {
+    setCarFilter(emptyCarFilter());
+    setFilter("all");
+    setQ("");
+  };
 
   const submit = () => {
-    if (!form.make || !form.model) return;
+    // Trim-aware: "   " is not a make. The shared layer trims on write anyway,
+    // so without this a whitespace-only entry would save as an empty make.
+    if (!form.make.trim() || !form.model.trim()) return;
     if (uploadsInFlight()) return; // guard: don't save while a photo is still uploading
     // First photo is the cover/thumbnail; drop blank rows. `image` stays in sync
     // with photos[0] so cards and car lookups elsewhere keep working.
@@ -329,7 +348,9 @@ export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onD
 
       <InventoryFilters
         cars={scoped}
-        value={carFilter}
+        // The sanitized filter, never the raw stored one: a selection that no
+        // longer exists must not reach the Select as a value with no matching item.
+        value={activeFilter}
         onChange={setCarFilter}
         // "Showing", not a bare count: this reflects the status pills and the
         // search box as well as the dropdowns it sits beside. Shown whenever
@@ -337,7 +358,7 @@ export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onD
         // would hide it exactly when a filter matched everything (e.g. picking
         // the only make a showroom stocks) and make the control look inert.
         trailing={
-          isCarFilterActive(carFilter) || filter !== "all" || q.trim() !== "" ? (
+          anyNarrowing ? (
             <span className="text-ink-40" style={{ fontSize: "0.75rem" }}>
               Showing {filtered.length} of {scoped.length}
             </span>
@@ -376,11 +397,13 @@ export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onD
         <div className="rounded-lg border border-dashed border-border p-12 text-center">
           <div className="accent-rule mx-auto mb-3" />
           <p className="text-ink-60">No cars match this view.</p>
-          {/* When a make/model/variant filter is what emptied the list, offer the
-              way out here too — the Clear control sits in a toolbar the operator
-              has usually scrolled past by the time they read this. */}
-          {isCarFilterActive(carFilter) && (
-            <Button variant="outline" className="mt-4" onClick={() => setCarFilter(emptyCarFilter())}>
+          {/* The way out, offered here because the toolbar is usually scrolled
+              past by the time this is read. Clears the status pill and the search
+              box as well as the dropdowns — any of the three can empty the grid,
+              and a button labelled "Clear filters" that left two of them set would
+              look broken. */}
+          {anyNarrowing && (
+            <Button variant="outline" className="mt-4" onClick={clearAllFilters}>
               Clear filters
             </Button>
           )}
@@ -643,7 +666,19 @@ export function Inventory({ cars, loading, error, onReload, onAdd, onUpdate, onD
             <div className="flex items-center gap-2">
               {uploadsInFlight() && <span className="text-ink-40" style={{ fontSize: "0.72rem" }}>Uploading…</span>}
               <Button variant="ghost" onClick={closeForm}>Cancel</Button>
-              <Button className="bg-noir text-white hover:bg-noir-700" onClick={submit} disabled={uploadsInFlight()}>
+              {/* Disabled for exactly what submit() refuses. Make and model are
+                  required and are trim-checked, so a whitespace-only entry must
+                  disable the button too — otherwise the click is a silent no-op
+                  with no toast and no field error, and the operator is left
+                  wondering whether the car saved. */}
+              <Button
+                className="bg-noir text-white hover:bg-noir-700"
+                onClick={submit}
+                disabled={uploadsInFlight() || !form.make.trim() || !form.model.trim()}
+                title={
+                  !form.make.trim() || !form.model.trim() ? "Make and model are required" : undefined
+                }
+              >
                 {editingId ? "Save changes" : "Add to collection"}
               </Button>
             </div>

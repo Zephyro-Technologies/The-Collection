@@ -90,6 +90,23 @@ type CarRowWrite = Omit<
 > &
   Partial<Pick<InventoryRow, "published" | "featured">>;
 
+/**
+ * Trim a free-text identity field on the way into the database.
+ *
+ * make / model / variant / colour are typed by hand and are what the dashboard
+ * groups and filters cars BY, so stray whitespace is not cosmetic: " Porsche "
+ * and "Porsche" would otherwise be two different makes in every dropdown, and a
+ * filter built from one could not match the other. Normalising here rather than
+ * in the form means every writer gets it — the Inventory screen today, the LLM
+ * bot later.
+ *
+ * Deliberately trim ONLY. Case is left exactly as entered: no rule could
+ * correctly title-case "BMW", "McLaren" and "Mercedes-Benz", and the dashboard's
+ * filters already compare case-insensitively, so folding case here would destroy
+ * the operator's spelling for no gain.
+ */
+const clean = (v?: string) => (v ?? "").trim();
+
 function carToRow(input: CarInput): CarRowWrite {
   const photos = input.photos?.length
     ? input.photos
@@ -97,17 +114,17 @@ function carToRow(input: CarInput): CarRowWrite {
     ? [input.image]
     : [];
   const row: CarRowWrite = {
-    make: input.make,
-    model: input.model,
-    variant: input.variant ?? "",
+    make: clean(input.make),
+    model: clean(input.model),
+    variant: clean(input.variant),
     year: input.year,
     mileage: input.mileageKm,
-    color: input.colour ?? "",
+    color: clean(input.colour),
     price: input.price,
     currency: input.currency ?? "PKR",
     status: input.status,
     photos,
-    description: input.description ?? "",
+    description: clean(input.description),
     // Default true: the dealership's own stock has complete docs unless the
     // form's toggle is explicitly turned off for a rare no-docs car.
     docs_complete: input.docsComplete ?? true,
