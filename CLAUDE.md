@@ -54,9 +54,23 @@ pnpm --filter @collection/website  dev    # website dev server
 pnpm --filter @collection/website  build  # website production build
 ```
 
-There are **no tests, no linter, and no typecheck** — and no `tsconfig.json` or `typescript`
-dependency anywhere. `vite build` transpiles via esbuild **without type checking**, so a type error
-fails nothing; it only shows in an editor. Do not invent test/lint/typecheck commands.
+There is **no linter and no typecheck** — and no `tsconfig.json` or `typescript` dependency
+anywhere. `vite build` transpiles via esbuild **without type checking**, so a type error fails
+nothing; it only shows in an editor. Do not invent lint/typecheck commands.
+
+Treat a green build as very weak evidence. It catches syntax errors and nothing else — a temporal
+dead zone `ReferenceError` that white-screened the whole dashboard, and a filter that hid the cars
+it was meant to show, both compiled cleanly.
+
+There is **one** test, and no test runner:
+
+```bash
+pnpm --filter @collection/dashboard test:filters   # node --experimental-strip-types, no deps
+```
+
+It asserts the inventory filter logic in `components/inventory/car-filter.ts`, which is kept free
+of React and Radix imports precisely so it can be run this way. Do not assume any other test
+command exists.
 
 `pnpm-workspace.yaml` carries three deliberate policies: `allowBuilds` (only esbuild and
 `@tailwindcss/oxide` may run install scripts), `minimumReleaseAge: 10080` (refuse packages published

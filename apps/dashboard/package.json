@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "test:filters": "node --experimental-strip-types src/app/components/inventory/car-filter.test.mjs"
   },
   "dependencies": {
     "@collection/shared": "workspace:*",
